@@ -3,10 +3,7 @@ package xyz.jadonfowler.sounds.network
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
-import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.channel.ChannelInitializer
-import io.netty.channel.ChannelOption
+import io.netty.channel.*
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
@@ -26,6 +23,10 @@ data class Protocol(val packets: Map<Int, Class<Protocol>>) {
     operator fun get(packet: Packet?): Int {
         return packets.filter { it.value == packet }.entries.first().key
     }
+}
+
+abstract class PacketHandler {
+    abstract fun receive(client: Client, packet: Packet)
 }
 
 class PacketEncoder(val protocol: Protocol) : MessageToByteEncoder<Packet>() {
@@ -78,7 +79,9 @@ class Server(val protocol: Protocol, val port: Int, val handler: ChannelInboundH
 
 }
 
-class Client(val protocol: Protocol, val port: Int, val host: String, val handler: ChannelInboundHandlerAdapter) {
+class Client(val protocol: Protocol, val port: Int, val host: String, val handler: PacketHandler) {
+
+    var channel: Channel? = null
 
     fun run() {
         val workerGroup = NioEventLoopGroup()
@@ -87,9 +90,16 @@ class Client(val protocol: Protocol, val port: Int, val host: String, val handle
             b.group(workerGroup)
             b.channel(NioSocketChannel::class.java)
             b.option(ChannelOption.SO_KEEPALIVE, true)
+            val client = this
             b.handler(object : ChannelInitializer<SocketChannel>() {
                 public override fun initChannel(ch: SocketChannel) {
-                    ch.pipeline().addLast(PacketDecoder(protocol), handler)
+                    channel = ch
+                    channel!!.pipeline().addLast(PacketDecoder(protocol), object : ChannelInboundHandlerAdapter() {
+                        override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+                            if (msg is Packet)
+                                handler.receive(client, msg)
+                        }
+                    })
                 }
             })
 
@@ -101,6 +111,10 @@ class Client(val protocol: Protocol, val port: Int, val host: String, val handle
         } finally {
             workerGroup.shutdownGracefully()
         }
+    }
+
+    fun send(packet: Packet) {
+        channel?.writeAndFlush(packet)
     }
 
 }
