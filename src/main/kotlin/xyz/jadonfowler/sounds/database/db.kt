@@ -20,7 +20,7 @@ interface SongDatabase {
 
 }
 
-class SQLDatabase(host: String) : SongDatabase {
+class SQLDatabase(val host: String) : SongDatabase {
 
     object Songs : Table() {
         val id = varchar("id", 32).primaryKey()
@@ -28,7 +28,7 @@ class SQLDatabase(host: String) : SongDatabase {
         val title = varchar("title", 64)
     }
 
-    init {
+    fun run() {
         Database.connect(host, "org.h2.Driver")
         transaction {
             create(Songs)
