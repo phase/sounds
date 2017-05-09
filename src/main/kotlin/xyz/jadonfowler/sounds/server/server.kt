@@ -5,12 +5,21 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import xyz.jadonfowler.sounds.database.SQLDatabase
 import xyz.jadonfowler.sounds.network.*
+import xyz.jadonfowler.sounds.providers.SongProvider
 import xyz.jadonfowler.sounds.structure.Song
 import xyz.jadonfowler.sounds.structure.SongDetails
 import xyz.jadonfowler.sounds.structure.md5Hash
 import java.io.File
 
+fun main(args: Array<String>) {
+    println("S T A R T I N G S E R V E R")
+    val server = SoundsServer("null", 6666)
+    server.start()
+}
+
 class SoundsServer(sqlHost: String, nettyServerPort: Int) {
+
+    val songProvider = SongProvider(this::uploadSong)
 
     val database = SQLDatabase(sqlHost)
 
@@ -34,9 +43,10 @@ class SoundsServer(sqlHost: String, nettyServerPort: Int) {
         }
     })
 
-    fun run() {
-        database.run()
-        nettyServer.run()
+    fun start() {
+        songProvider.start()
+//        database.start()
+//        nettyServer.start()
     }
 
     fun uploadSong(file: File) {
@@ -55,7 +65,8 @@ class SoundsServer(sqlHost: String, nettyServerPort: Int) {
             Song(id, bytes, SongDetails(title, artist))
         } else Song(id, bytes, SongDetails("null_title", "null_artist"))
 
-        database.storeSong(song)
+//        database.storeSong(song)
+        println("Uploading Song: ${song.songDetails.title} by ${song.songDetails.artist} with id ${song.id}.")
     }
 
 }

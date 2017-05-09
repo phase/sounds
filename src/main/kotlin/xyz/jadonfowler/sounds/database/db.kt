@@ -28,7 +28,7 @@ class SQLDatabase(val host: String) : SongDatabase {
         val title = varchar("title", 64)
     }
 
-    fun run() {
+    fun start() {
         Database.connect(host, "org.h2.Driver")
         transaction {
             create(Songs)

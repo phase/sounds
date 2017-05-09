@@ -70,7 +70,7 @@ class PacketDecoder(val protocol: Protocol) : ReplayingDecoder<Void>() {
 
 class Server(val protocol: Protocol, val port: Int, val handler: ChannelInboundHandlerAdapter) {
 
-    fun run() {
+    fun start() {
         val bossGroup = NioEventLoopGroup()
         val workerGroup = NioEventLoopGroup()
         try {
@@ -102,7 +102,7 @@ class Client(val protocol: Protocol, val port: Int, val host: String, val handle
 
     lateinit var channel: Channel
 
-    fun run() {
+    fun start() {
         val workerGroup = NioEventLoopGroup()
         try {
             val b = Bootstrap()
