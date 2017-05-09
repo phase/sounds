@@ -1,4 +1,4 @@
-package xyz.jadonfowler.sounds
+package xyz.jadonfowler.sounds.structure
 
 class User(
         val name: String,
@@ -11,6 +11,12 @@ class SongDetails(
 )
 
 class Song(
+        val id: String,
         val bytes: ByteArray,
         val songDetails: SongDetails
+)
+
+class Album(
+        val id: String,
+        val songIds: Array<String>
 )
