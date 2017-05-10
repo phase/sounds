@@ -13,15 +13,17 @@ import java.io.File
 
 fun main(args: Array<String>) {
     println("S T A R T I N G S E R V E R")
-    val server = SoundsServer("null", 6666)
+    val server = SoundsServer("config.toml", 6666)
     server.start()
 }
 
-class SoundsServer(sqlHost: String, nettyServerPort: Int) {
+class SoundsServer(configLocation: String, nettyServerPort: Int) {
+
+    val config = readConfig(File(configLocation))
 
     val songProvider = SongProvider(this::uploadSong)
 
-    val database = SQLDatabase(sqlHost)
+    val database = SQLDatabase(config.database.sqlHost)
 
     val nettyServer = Server(SoundsProtocol, nettyServerPort, object : ChannelInboundHandlerAdapter() {
         override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
@@ -63,7 +65,7 @@ class SoundsServer(sqlHost: String, nettyServerPort: Int) {
             val title = mp3.id3v2Tag.title
             val artist = mp3.id3v2Tag.artist
             Song(id, bytes, SongDetails(title, artist))
-        } else Song(id, bytes, SongDetails("null_title", "null_artist"))
+        } else Song(id, bytes, SongDetails("Unknown Title", "Unknown Artist"))
 
 //        database.storeSong(song)
         println("Uploading Song: ${song.songDetails.title} by ${song.songDetails.artist} with id ${song.id}.")

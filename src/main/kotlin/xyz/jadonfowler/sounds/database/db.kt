@@ -24,8 +24,8 @@ class SQLDatabase(val host: String) : SongDatabase {
 
     object Songs : Table() {
         val id = varchar("id", 32).primaryKey()
-        val bytes = binary("bytes", 20000000) // XXX: bad idea?
         val title = varchar("title", 64)
+        val artist = varchar("artist", 64)
     }
 
     fun start() {
@@ -39,8 +39,8 @@ class SQLDatabase(val host: String) : SongDatabase {
         transaction {
             Songs.insert {
                 it[id] = song.id
-                it[bytes] = song.bytes
                 it[title] = song.songDetails.title
+                it[artist] = song.songDetails.artist
             }
         }
     }
@@ -50,10 +50,10 @@ class SQLDatabase(val host: String) : SongDatabase {
         transaction {
             Songs.select { Songs.title.like("%$query%") }.forEach {
                 val id = it[Songs.id]
-                val bytes = it[Songs.bytes]
                 val title = it[Songs.title]
-                songs.add(Song(id, bytes,
-                        SongDetails(title, ""/*TODO: Artist*/)
+                val artist = it[Songs.artist]
+                songs.add(Song(id, ByteArray(0), // TODO: Read from file using ID
+                        SongDetails(title, artist)
                 ))
             }
         }
