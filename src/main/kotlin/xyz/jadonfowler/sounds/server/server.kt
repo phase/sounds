@@ -5,23 +5,24 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import xyz.jadonfowler.sounds.database.SQLDatabase
 import xyz.jadonfowler.sounds.network.*
-import xyz.jadonfowler.sounds.providers.SongProvider
+import xyz.jadonfowler.sounds.providers.SoundCloudProvider
 import xyz.jadonfowler.sounds.structure.Song
 import xyz.jadonfowler.sounds.structure.SongDetails
 import xyz.jadonfowler.sounds.structure.md5Hash
 import java.io.File
 
+// TODO: Move somewhere else
+val config = readConfig(File("src/main/resources/config.toml"))
+
 fun main(args: Array<String>) {
     println("S T A R T I N G S E R V E R")
-    val server = SoundsServer("config.toml", 6666)
+    val server = SoundsServer(6666)
     server.start()
 }
 
-class SoundsServer(configLocation: String, nettyServerPort: Int) {
+class SoundsServer(nettyServerPort: Int) {
 
-    val config = readConfig(File(configLocation))
-
-    val songProvider = SongProvider(this::uploadSong)
+    val songProvider = SoundCloudProvider(this::uploadSong)
 
     val database = SQLDatabase(config.database.sqlHost)
 
@@ -46,12 +47,13 @@ class SoundsServer(configLocation: String, nettyServerPort: Int) {
     })
 
     fun start() {
-        songProvider.start()
+        songProvider.collect()
 //        database.start()
 //        nettyServer.start()
     }
 
     fun uploadSong(file: File) {
+        println(file.absolutePath)
         val mp3 = Mp3File(file)
 
         val bytes = file.readBytes()
