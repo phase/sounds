@@ -53,9 +53,7 @@ class SoundsServer(nettyServerPort: Int) {
     }
 
     fun uploadSong(file: File) {
-        println(file.absolutePath)
         val mp3 = Mp3File(file)
-
         val bytes = file.readBytes()
         val id = bytes.md5Hash()
 

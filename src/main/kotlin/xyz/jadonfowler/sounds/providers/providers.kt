@@ -3,6 +3,7 @@ package xyz.jadonfowler.sounds.providers
 import com.github.kittinunf.fuel.httpGet
 import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File
+import me.doubledutch.lazyjson.LazyObject
 import xyz.jadonfowler.sounds.server.config
 import xyz.jadonfowler.sounds.structure.md5Hash
 import java.io.File
@@ -53,7 +54,9 @@ class SoundCloudProvider(handler: (File) -> Unit) : SongProvider(handler) {
             "url=https%3A%2F%2Fsoundcloud.com%2F" +
             "@USER@%2F" +
             "@TRACK@&client_id=${config.soundcloud.clientId}"
-    val topChartsUrl = "https://soundcloud.com/charts/top"
+    val topChartsUrl = "https://api-v2.soundcloud.com/charts?kind=top&genre=soundcloud%3Agenres%3Aall-music" +
+            "&client_id=${config.soundcloud.clientId}" +
+            "&limit=200&offset=0&linked_partitioning=1"
 
     override fun search(query: String) {
     }
@@ -63,15 +66,18 @@ class SoundCloudProvider(handler: (File) -> Unit) : SongProvider(handler) {
     }
 
     fun downloadTopCharts() {
-        val pattern = Pattern.compile("<a itemprop=\"url\" href=\"(.*)\">")
-        val (request, response, result) = topChartsUrl.httpGet().responseString()
-        val matcher = pattern.matcher(result.component1())
-        while (matcher.find()) {
-            val url = matcher.group(1)
-            try {
-                downloadFromUrl(url)
-            } catch(e: Exception) {
-                System.err.println("Couldn't download song from $url")
+        val (_, _, result) = topChartsUrl.httpGet().responseString()
+        val resultJson = LazyObject(result.component1())
+        val tracks = resultJson.getJSONArray("collection")
+        println("Found ${tracks.length()} tracks.")
+        (0..tracks.length() - 1).forEach {
+            val track = tracks.getJSONObject(it).getJSONObject("track")
+            val id = track.getInt("id")
+            val title = track.getString("title")
+            val artist = track.getJSONObject("user").getString("username")
+            val streamable = track.getBoolean("streamable")
+            if (streamable) {
+                download("$id", title, artist)
             }
         }
     }
@@ -87,7 +93,6 @@ class SoundCloudProvider(handler: (File) -> Unit) : SongProvider(handler) {
     fun download(trackId: String, title: String, artist: String) {
         // Download the song
         val url = downloadUrl.replace("@TRACKID@", trackId)
-        println(url)
         val (_, _, result) = url.httpGet().response()
         val bytes = result.component1() ?: ByteArray(0)
 
