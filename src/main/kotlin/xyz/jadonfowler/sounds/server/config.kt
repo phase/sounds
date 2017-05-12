@@ -4,7 +4,7 @@ import com.moandjiezana.toml.Toml
 import java.io.File
 
 class Config {
-    lateinit var songFolder: String
+    lateinit var rootFolder: String
     lateinit var database: DatabaseInformation
     lateinit var soundcloud: SoundCloudInformation
 }

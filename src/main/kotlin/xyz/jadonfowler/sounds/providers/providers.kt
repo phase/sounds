@@ -1,13 +1,16 @@
 package xyz.jadonfowler.sounds.providers
 
 import com.github.kittinunf.fuel.httpGet
+import com.github.kittinunf.fuel.util.toHexString
 import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File
 import me.doubledutch.lazyjson.LazyObject
 import xyz.jadonfowler.sounds.server.config
 import xyz.jadonfowler.sounds.structure.md5Hash
+import java.io.BufferedReader
 import java.io.File
-import java.util.regex.Pattern
+import java.io.InputStreamReader
+import java.util.concurrent.ThreadLocalRandom
 
 abstract class SongProvider(val handler: (File) -> Unit) {
 
@@ -16,7 +19,7 @@ abstract class SongProvider(val handler: (File) -> Unit) {
 
     fun store(bytes: ByteArray): File {
         val id = bytes.md5Hash()
-        val file = File(config.songFolder + File.separator + id)
+        val file = File(config.rootFolder + File.separator + "songs" + File.separator + id)
         if (file.exists())
             System.err.println("Song already exists: $id")
         file.createNewFile()
@@ -126,4 +129,53 @@ class SoundCloudProvider(handler: (File) -> Unit) : SongProvider(handler) {
         return Triple(id, title, artist)
     }
 
+}
+
+/**
+ * This class uses youtube-dl & ffmpeg
+ */
+class YouTubeProvider(handler: (File) -> Unit) : SongProvider(handler) {
+    val downloadCommand = "youtube-dl -f m4a -o @OUTPUT@ "
+    val convertCommand = "ffmpeg -i @INPUT@ -acodec mp3 -ac 2 -ab 192k @OUTPUT@"
+
+    override fun search(query: String) {
+    }
+
+    override fun collect() {}
+
+    fun download(url: String, title: String, artist: String) {
+        // Create a random id for the files
+        val tempId = ThreadLocalRandom.current().nextLong(1, 10000000000).toHexString()
+        println(tempId)
+        val tempM4a = config.rootFolder + "temp" + File.separator + tempId + ".m4a"
+        val tempMp3 = config.rootFolder + "temp" + File.separator + tempId + ".mp3"
+
+        // Setup commands
+        val download = downloadCommand.replace("@OUTPUT@", tempM4a) + url
+        val convert = convertCommand.replace("@INPUT@", tempM4a).replace("@OUTPUT@", tempMp3)
+
+        val runProcess = { command: String ->
+            val process = Runtime.getRuntime().exec(command)
+            println(command)
+            val output = BufferedReader(InputStreamReader(process.inputStream)).readLine()
+            val error = BufferedReader(InputStreamReader(process.errorStream)).readLine()
+            if (output != null) println(output)
+            if (error != null) println(error)
+        }
+        runProcess(download)
+        runProcess(convert)
+
+        // Set tags
+        val song = Mp3File(tempMp3)
+        val tag = ID3v24Tag()
+        tag.title = title
+        tag.artist = artist
+        song.id3v2Tag = tag
+
+        // Write to new file and store it
+        val output = tempMp3 + "-done.mp3"
+        song.save(output)
+        val bytes = File(output).readBytes()
+        handler(store(bytes))
+    }
 }
