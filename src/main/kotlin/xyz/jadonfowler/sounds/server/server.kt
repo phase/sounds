@@ -5,6 +5,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import xyz.jadonfowler.sounds.database.SQLDatabase
 import xyz.jadonfowler.sounds.network.*
+import xyz.jadonfowler.sounds.providers.LocalFileProvider
 import xyz.jadonfowler.sounds.providers.SoundCloudProvider
 import xyz.jadonfowler.sounds.providers.YouTubeProvider
 import xyz.jadonfowler.sounds.structure.Song
@@ -23,7 +24,11 @@ fun main(args: Array<String>) {
 
 class SoundsServer(nettyServerPort: Int) {
 
-    val songProvider = YouTubeProvider(this::uploadSong)
+    val songProviders = listOf(
+            SoundCloudProvider(this::uploadSong),
+            LocalFileProvider(this::uploadSong),
+            YouTubeProvider(this::uploadSong)
+    )
 
     val database = SQLDatabase(config.database.sqlHost)
 
@@ -48,10 +53,16 @@ class SoundsServer(nettyServerPort: Int) {
     })
 
     fun start() {
-        songProvider.download("https://www.youtube.com/watch?v=_qePRhlFEN0", "Emoji", "XXXTENTACION")
-        songProvider.download("https://www.youtube.com/watch?v=RfcJ3i1iPT4", "Gospel (ft. Rich Chigga & Keith Ape)", "XXXTENTACION")
 //        database.start()
 //        nettyServer.start()
+        songProviders.forEach {
+            it.start()
+            if (it is YouTubeProvider) {
+                it.download("https://www.youtube.com/watch?v=_qePRhlFEN0", "Emoji", "XXXTENTACION")
+                it.download("https://www.youtube.com/watch?v=s1CY9AYUa7U", "Gospel (ft. Rich Chigga & Keith Ape)", "XXXTENTACION")
+                it.download("https://www.youtube.com/watch?v=rzc3_b_KnHc", "Dat \$tick", "Rich Chigga")
+            }
+        }
     }
 
     fun uploadSong(file: File) {

@@ -27,6 +27,20 @@ abstract class SongProvider(val handler: (File) -> Unit) {
         return file
     }
 
+    lateinit var thread: Thread
+
+    fun start() {
+        thread = Thread {
+            System.err.println("Starting ${this.javaClass.simpleName}.")
+            collect()
+        }
+        thread.start()
+    }
+
+    fun stop() {
+        thread.interrupt()
+    }
+
 }
 
 class LocalFileProvider(handler: (File) -> Unit) : SongProvider(handler) {
@@ -135,6 +149,7 @@ class SoundCloudProvider(handler: (File) -> Unit) : SongProvider(handler) {
  * This class uses youtube-dl & ffmpeg
  */
 class YouTubeProvider(handler: (File) -> Unit) : SongProvider(handler) {
+
     val downloadCommand = "youtube-dl -f m4a -o @OUTPUT@ "
     val convertCommand = "ffmpeg -i @INPUT@ -acodec mp3 -ac 2 -ab 192k @OUTPUT@"
 
@@ -146,7 +161,6 @@ class YouTubeProvider(handler: (File) -> Unit) : SongProvider(handler) {
     fun download(url: String, title: String, artist: String) {
         // Create a random id for the files
         val tempId = ThreadLocalRandom.current().nextLong(1, 10000000000).toHexString()
-        println(tempId)
         val tempM4a = config.rootFolder + "temp" + File.separator + tempId + ".m4a"
         val tempMp3 = config.rootFolder + "temp" + File.separator + tempId + ".mp3"
 
@@ -178,4 +192,5 @@ class YouTubeProvider(handler: (File) -> Unit) : SongProvider(handler) {
         val bytes = File(output).readBytes()
         handler(store(bytes))
     }
+
 }
