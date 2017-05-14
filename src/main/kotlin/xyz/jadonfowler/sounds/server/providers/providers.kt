@@ -86,7 +86,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
             "url=https%3A%2F%2Fsoundcloud.com%2F" +
             "@USER@%2F" +
             "@TRACK@&client_id=${config.soundcloud.clientId}"
-    val topChartsUrl = "https://api-v2.soundcloud.com/charts?kind=top&genre=soundcloud%3Agenres%3Aall-music" +
+    val topChartsUrl = "https://api-v2.soundcloud.com/charts?kind=top&genre=soundcloud%3Agenres%3A@GENRE@" +
             "&client_id=${config.soundcloud.clientId}" +
             "&limit=200&offset=0&linked_partitioning=1"
 
@@ -94,11 +94,11 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
     }
 
     override fun collect() {
-        downloadTopCharts()
+        downloadTopCharts("hiphoprap")
     }
 
-    fun downloadTopCharts() {
-        val (_, _, result) = topChartsUrl.httpGet().responseString()
+    fun downloadTopCharts(genre: String) {
+        val (_, _, result) = topChartsUrl.replace("@GENRE@", genre).httpGet().responseString()
         val resultJson = LazyObject(result.component1())
         val tracks = resultJson.getJSONArray("collection")
         println("Found ${tracks.length()} tracks.")
