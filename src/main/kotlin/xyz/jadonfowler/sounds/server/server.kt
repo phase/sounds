@@ -70,9 +70,12 @@ class SoundsServer(nettyServerPort: Int) {
             }
         }
         database.querySong("Go").forEach {
-            println("Found ${it.songDetails.title} by ${it.songDetails.artists.joinToString(", ")}.")
+            println("Found ${it.songDetails.title} by ${it.songDetails.artists.joinToString(", ")}. (${it.id})")
         }
         database.querySong("X").forEach {
+            println("Found ${it.songDetails.title} by ${it.songDetails.artists.joinToString(", ")}. (${it.id})")
+        }
+        database.retrieveSongsByArtist("Kodak Black").forEach {
             println("Found ${it.songDetails.title} by ${it.songDetails.artists.joinToString(", ")}. (${it.id})")
         }
     }

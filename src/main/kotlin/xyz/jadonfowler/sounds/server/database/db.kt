@@ -21,6 +21,8 @@ interface SongDatabase {
 
     fun songExists(id: String): Boolean
 
+    fun retrieveSongsByArtist(artist: String): List<Song>
+
 }
 
 class SQLDatabase(val host: String, val port: Int = 3306, val database: String, val user: String, val password: String) : SongDatabase {
@@ -48,9 +50,18 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
         }
     }
 
+    fun ResultRow.toSong(): Song {
+        val id = this[Songs.id]
+        val title = this[Songs.title]
+        val artists = this[Songs.artists]
+        return Song(id, File(config.rootFolder + "songs" + File.separator + id).readBytes(),
+                SongDetails(title, SongDetails.decompressArtists(artists))
+        )
+    }
+
     override fun storeSong(song: Song) {
         val songTitle = song.songDetails.title
-        val songArtists = song.songDetails.artists.joinToString("\n")
+        val songArtists = song.songDetails.compressArtists()
         transaction {
             val sameId = Songs.select { Songs.id eq song.id }
             if (sameId.empty()) {
@@ -77,12 +88,7 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
         val songs = mutableListOf<Song>()
         transaction {
             Songs.select { Songs.title like "%$query%" }.forEach {
-                val id = it[Songs.id]
-                val title = it[Songs.title]
-                val artists = it[Songs.artists]
-                songs.add(Song(id, File(config.rootFolder + "songs" + File.separator + id).readBytes(),
-                        SongDetails(title, artists.split("\n"))
-                ))
+                songs.add(it.toSong())
             }
         }
         return songs
@@ -94,7 +100,7 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
         transaction {
             Songs.update({ Songs.id eq id }) {
                 it[title] = details.title
-                it[artists] = details.artists.joinToString("\n")
+                it[artists] = details.compressArtists()
             }
         }
     }
@@ -105,6 +111,16 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
             r = !Songs.select { Songs.id eq id }.empty()
         }
         return r
+    }
+
+    override fun retrieveSongsByArtist(artist: String): List<Song> {
+        val songs = mutableListOf<Song>()
+        transaction {
+            Songs.select { Songs.artists like "%|$artist|%" }.forEach {
+                songs.add(it.toSong())
+            }
+        }
+        return songs
     }
 
 }

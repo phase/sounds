@@ -8,7 +8,13 @@ class User(
 class SongDetails(
         val title: String,
         val artists: List<String>
-)
+) {
+    fun compressArtists(): String = "|${artists.joinToString("|")}|"
+
+    companion object {
+        fun decompressArtists(artists: String): List<String> = artists.substring(1, artists.length - 1).split("|")
+    }
+}
 
 class Song(
         val id: String,
