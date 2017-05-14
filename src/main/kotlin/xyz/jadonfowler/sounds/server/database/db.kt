@@ -1,11 +1,8 @@
 package xyz.jadonfowler.sounds.server.database
 
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.SchemaUtils.create
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
 import xyz.jadonfowler.sounds.server.config
 import xyz.jadonfowler.sounds.structure.*
 import java.io.File
@@ -22,7 +19,7 @@ interface SongDatabase {
 
 }
 
-class SQLDatabase(val host: String) : SongDatabase {
+class SQLDatabase(val host: String, val port: Int = 3306, val database: String, val user: String, val password: String) : SongDatabase {
 
     object Songs : Table() {
         val id = varchar("id", 32).primaryKey()
@@ -31,7 +28,16 @@ class SQLDatabase(val host: String) : SongDatabase {
     }
 
     fun start() {
-        Database.connect(host, "org.h2.Driver")
+        Database.connect(
+                "jdbc:mysql://$host:$port/$database?" +
+                        "useUnicode=true" +
+                        "&useJDBCCompliantTimezoneShift=true" +
+                        "&useLegacyDatetimeCode=false" +
+                        "&serverTimezone=UTC" +
+                        "&nullNamePatternMatchesAll=true",
+                "com.mysql.cj.jdbc.Driver",
+                user, password
+        )
         transaction {
             create(Songs)
         }
@@ -39,10 +45,16 @@ class SQLDatabase(val host: String) : SongDatabase {
 
     override fun storeSong(song: Song) {
         transaction {
-            Songs.insert {
-                it[id] = song.id
-                it[title] = song.songDetails.title
-                it[artists] = song.songDetails.artists.joinToString("\n")
+            if (Songs.select { Songs.id.eq(song.id) }.empty()) {
+                Songs.insert {
+                    it[id] = song.id
+                    it[title] = song.songDetails.title
+                    it[artists] = song.songDetails.artists.joinToString("\n")
+                }
+            } else {
+                System.err.println("Tried to store ${song.songDetails.title} " +
+                        "by ${song.songDetails.artists.joinToString(", ")} in the database, " +
+                        "but there is already a song with the id of ${song.id}")
             }
         }
     }
@@ -50,7 +62,7 @@ class SQLDatabase(val host: String) : SongDatabase {
     override fun querySong(query: String): List<Song> {
         val songs = mutableListOf<Song>()
         transaction {
-            Songs.select { Songs.title.like("%$query%") }.forEach {
+            Songs.select { Songs.title like "%$query%" }.forEach {
                 val id = it[Songs.id]
                 val title = it[Songs.title]
                 val artists = it[Songs.artists]

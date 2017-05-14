@@ -188,6 +188,7 @@ class YouTubeProvider(handler: (Song) -> Unit) : SongProvider(handler) {
         val runProcess = { command: String ->
             val process = Runtime.getRuntime().exec(command)
             println(command)
+            process.waitFor()
             val output = BufferedReader(InputStreamReader(process.inputStream)).readLine()
             val error = BufferedReader(InputStreamReader(process.errorStream)).readLine()
             if (output != null) println(output)

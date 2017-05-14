@@ -11,6 +11,8 @@ class Config {
 
 class DatabaseInformation {
     lateinit var sqlHost: String
+    lateinit var sqlDatabase: String
+    lateinit var sqlUser: String
     lateinit var sqlPassword: String
 }
 

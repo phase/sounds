@@ -31,4 +31,5 @@ dependencies {
     compile "com.moandjiezana.toml:toml4j:0.7.1"
     compile 'com.github.kittinunf.fuel:fuel:1.6.0'
     compile 'me.doubledutch:lazyjson:2.2.1'
+    compile 'mysql:mysql-connector-java:6.0.+'
 }

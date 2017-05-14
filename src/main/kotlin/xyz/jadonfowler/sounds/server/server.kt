@@ -30,7 +30,12 @@ class SoundsServer(nettyServerPort: Int) {
             YouTubeProvider(this::uploadSong)
     )
 
-    val database = SQLDatabase(config.database.sqlHost)
+    val database = SQLDatabase(
+            host = config.database.sqlHost,
+            database = config.database.sqlDatabase,
+            user = config.database.sqlUser,
+            password = config.database.sqlPassword
+    )
 
     val nettyServer = Server(SoundsProtocol, nettyServerPort, object : ChannelInboundHandlerAdapter() {
         override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
@@ -53,16 +58,19 @@ class SoundsServer(nettyServerPort: Int) {
     })
 
     fun start() {
-//        database.start()
+        database.start()
 //        nettyServer.start()
         songProviders.forEach {
-            it.start()
+            // it.start()
             if (it is YouTubeProvider) {
                 it.download("https://www.youtube.com/watch?v=_qePRhlFEN0", "Emoji", "XXXTENTACION")
                 it.download("https://www.youtube.com/watch?v=s1CY9AYUa7U", "Gospel", "XXXTENTACION", "Rich Chigga", "Keith Ape")
                 it.download("https://www.youtube.com/watch?v=roEZqhB_V50", "Going Down To Underwater", "Keith Ape", "Ski Mash The Slump God")
-                it.download("https://www.youtube.com/watch?v=QljRe99OMCU", "Eung Freestyle", "Live", "Sik-K", "Punchnello", "Own Ovadoz", "Flowsik")
+                it.download("https://www.youtube.com/watch?v=QljRe99OMCU", "Eung Freestyle", "Live", "Sik-K", "Punchnello", "Owen Ovadoz", "Flowsik")
             }
+        }
+        database.querySong("Go").forEach {
+            println("Found ${it.songDetails.title} by ${it.songDetails.artists.joinToString(", ")}.")
         }
     }
 
@@ -79,14 +87,14 @@ class SoundsServer(nettyServerPort: Int) {
             val title = mp3.id3v2Tag.title
             val artist = mp3.id3v2Tag.artist
             Song(id, bytes, SongDetails(title, listOf(artist)))
-        } else Song(id, bytes, SongDetails("Unknown Title", listOf("Unknown Artist")))
+        } else Song(id, bytes, SongDetails(file.name, listOf("Unknown Artist")))
 
         uploadSong(song)
     }
 
     fun uploadSong(song: Song) {
-//        database.storeSong(song)
         println("Uploading Song: ${song.songDetails.title} by ${song.songDetails.artists.joinToString(", ")} with id ${song.id}.")
+        database.storeSong(song)
     }
 
 }
