@@ -1,4 +1,4 @@
-package xyz.jadonfowler.sounds.providers
+package xyz.jadonfowler.sounds.server.providers
 
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.util.toHexString
@@ -6,25 +6,27 @@ import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File
 import me.doubledutch.lazyjson.LazyObject
 import xyz.jadonfowler.sounds.server.config
+import xyz.jadonfowler.sounds.structure.Song
+import xyz.jadonfowler.sounds.structure.SongDetails
 import xyz.jadonfowler.sounds.structure.md5Hash
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.ThreadLocalRandom
 
-abstract class SongProvider(val handler: (File) -> Unit) {
+abstract class SongProvider(val handler: (Song) -> Unit) {
 
     abstract fun search(query: String)
     abstract fun collect()
 
-    fun store(bytes: ByteArray): File {
+    fun store(bytes: ByteArray): Pair<String, File> {
         val id = bytes.md5Hash()
         val file = File(config.rootFolder + File.separator + "songs" + File.separator + id)
         if (file.exists())
             System.err.println("Song already exists: $id")
         file.createNewFile()
         file.writeBytes(bytes)
-        return file
+        return Pair(id, file)
     }
 
     lateinit var thread: Thread
@@ -43,7 +45,7 @@ abstract class SongProvider(val handler: (File) -> Unit) {
 
 }
 
-class LocalFileProvider(handler: (File) -> Unit) : SongProvider(handler) {
+class LocalFileProvider(handler: (Song) -> Unit) : SongProvider(handler) {
 
     override fun search(query: String) {
     }
@@ -57,14 +59,27 @@ class LocalFileProvider(handler: (File) -> Unit) : SongProvider(handler) {
         file.listFiles().forEach {
             if (it.isDirectory)
                 findFiles(it)
-            else if (it.extension == "mp3")
-                handler(store(it.readBytes()))
+            else if (it.extension == "mp3") {
+                val (id, songFile) = store(it.readBytes())
+                val bytes = songFile.readBytes()
+                val mp3 = Mp3File(songFile)
+                val song = if (mp3.hasId3v1Tag()) {
+                    val title = mp3.id3v1Tag.title
+                    val artist = mp3.id3v1Tag.artist
+                    Song(id, bytes, SongDetails(title, listOf(artist)))
+                } else if (mp3.hasId3v2Tag()) {
+                    val title = mp3.id3v2Tag.title
+                    val artist = mp3.id3v2Tag.artist
+                    Song(id, bytes, SongDetails(title, listOf(artist)))
+                } else Song(id, bytes, SongDetails(it.name, listOf("Unknown Artist")))
+                handler(song)
+            }
         }
     }
 
 }
 
-class SoundCloudProvider(handler: (File) -> Unit) : SongProvider(handler) {
+class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
 
     val downloadUrl = "http://api.soundcloud.com/tracks/@TRACKID@/stream?client_id=${config.soundcloud.clientId}"
     val resolveUrl = "https://api.soundcloud.com/resolve.json?" +
@@ -127,7 +142,9 @@ class SoundCloudProvider(handler: (File) -> Unit) : SongProvider(handler) {
         song.save(newPath)
 
         val newBytes = File(newPath).readBytes()
-        handler(store(newBytes))
+        val (id, songFile) = store(newBytes)
+        val newerBytes = songFile.readBytes()
+        handler(Song(id, newerBytes, SongDetails(title, listOf(artist))))
     }
 
     fun getTrackInfo(user: String, track: String): Triple<String, String, String> {
@@ -148,7 +165,7 @@ class SoundCloudProvider(handler: (File) -> Unit) : SongProvider(handler) {
 /**
  * This class uses youtube-dl & ffmpeg
  */
-class YouTubeProvider(handler: (File) -> Unit) : SongProvider(handler) {
+class YouTubeProvider(handler: (Song) -> Unit) : SongProvider(handler) {
 
     val downloadCommand = "youtube-dl -f m4a -o @OUTPUT@ "
     val convertCommand = "ffmpeg -i @INPUT@ -acodec mp3 -ac 2 -ab 192k @OUTPUT@"
@@ -158,7 +175,7 @@ class YouTubeProvider(handler: (File) -> Unit) : SongProvider(handler) {
 
     override fun collect() {}
 
-    fun download(url: String, title: String, artist: String) {
+    fun download(url: String, title: String, vararg artists: String) {
         // Create a random id for the files
         val tempId = ThreadLocalRandom.current().nextLong(1, 10000000000).toHexString()
         val tempM4a = config.rootFolder + "temp" + File.separator + tempId + ".m4a"
@@ -180,17 +197,19 @@ class YouTubeProvider(handler: (File) -> Unit) : SongProvider(handler) {
         runProcess(convert)
 
         // Set tags
-        val song = Mp3File(tempMp3)
+        val mp3 = Mp3File(tempMp3)
         val tag = ID3v24Tag()
-        tag.title = title
-        tag.artist = artist
-        song.id3v2Tag = tag
+        tag.title = "$title (ft. ${artists.asList().subList(1, artists.size).joinToString(", ")})"
+        tag.artist = artists[0]
+        mp3.id3v2Tag = tag
 
         // Write to new file and store it
         val output = tempMp3 + "-done.mp3"
-        song.save(output)
+        mp3.save(output)
         val bytes = File(output).readBytes()
-        handler(store(bytes))
+        val (id, _) = store(bytes)
+        val song = Song(id, bytes, SongDetails(title, artists.toList()))
+        handler(song)
     }
 
 }

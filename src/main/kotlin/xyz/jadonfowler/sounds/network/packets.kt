@@ -8,11 +8,11 @@ import xyz.jadonfowler.sounds.structure.User
 
 fun ByteBuf.writeSongDetails(songDetails: SongDetails) {
     writeString(songDetails.title)
-    writeString(songDetails.artist)
+    writeString(songDetails.artists.joinToString("\n"))
 }
 
 fun ByteBuf.readSongDetails(): SongDetails {
-    return SongDetails(readString(), readString())
+    return SongDetails(readString(), readString().split("\n"))
 }
 
 fun ByteBuf.writeSong(song: Song) {

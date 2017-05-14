@@ -3,11 +3,11 @@ package xyz.jadonfowler.sounds.server
 import com.mpatric.mp3agic.Mp3File
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import xyz.jadonfowler.sounds.database.SQLDatabase
+import xyz.jadonfowler.sounds.server.database.SQLDatabase
 import xyz.jadonfowler.sounds.network.*
-import xyz.jadonfowler.sounds.providers.LocalFileProvider
-import xyz.jadonfowler.sounds.providers.SoundCloudProvider
-import xyz.jadonfowler.sounds.providers.YouTubeProvider
+import xyz.jadonfowler.sounds.server.providers.LocalFileProvider
+import xyz.jadonfowler.sounds.server.providers.SoundCloudProvider
+import xyz.jadonfowler.sounds.server.providers.YouTubeProvider
 import xyz.jadonfowler.sounds.structure.Song
 import xyz.jadonfowler.sounds.structure.SongDetails
 import xyz.jadonfowler.sounds.structure.md5Hash
@@ -59,8 +59,9 @@ class SoundsServer(nettyServerPort: Int) {
             it.start()
             if (it is YouTubeProvider) {
                 it.download("https://www.youtube.com/watch?v=_qePRhlFEN0", "Emoji", "XXXTENTACION")
-                it.download("https://www.youtube.com/watch?v=s1CY9AYUa7U", "Gospel (ft. Rich Chigga & Keith Ape)", "XXXTENTACION")
-                it.download("https://www.youtube.com/watch?v=rzc3_b_KnHc", "Dat \$tick", "Rich Chigga")
+                it.download("https://www.youtube.com/watch?v=s1CY9AYUa7U", "Gospel", "XXXTENTACION", "Rich Chigga", "Keith Ape")
+                it.download("https://www.youtube.com/watch?v=roEZqhB_V50", "Going Down To Underwater", "Keith Ape", "Ski Mash The Slump God")
+                it.download("https://www.youtube.com/watch?v=QljRe99OMCU", "Eung Freestyle", "Live", "Sik-K", "Punchnello", "Own Ovadoz", "Flowsik")
             }
         }
     }
@@ -73,16 +74,19 @@ class SoundsServer(nettyServerPort: Int) {
         val song = if (mp3.hasId3v1Tag()) {
             val title = mp3.id3v1Tag.title
             val artist = mp3.id3v1Tag.artist
-            Song(id, bytes, SongDetails(title, artist))
+            Song(id, bytes, SongDetails(title, listOf(artist)))
         } else if (mp3.hasId3v2Tag()) {
             val title = mp3.id3v2Tag.title
             val artist = mp3.id3v2Tag.artist
-            Song(id, bytes, SongDetails(title, artist))
-        } else Song(id, bytes, SongDetails("Unknown Title", "Unknown Artist"))
+            Song(id, bytes, SongDetails(title, listOf(artist)))
+        } else Song(id, bytes, SongDetails("Unknown Title", listOf("Unknown Artist")))
 
+        uploadSong(song)
+    }
+
+    fun uploadSong(song: Song) {
 //        database.storeSong(song)
-        println("Uploading Song: ${song.songDetails.title} by ${song.songDetails.artist} with id ${song.id}.")
+        println("Uploading Song: ${song.songDetails.title} by ${song.songDetails.artists.joinToString(", ")} with id ${song.id}.")
     }
 
 }
-

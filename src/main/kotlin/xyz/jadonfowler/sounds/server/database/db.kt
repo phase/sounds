@@ -1,4 +1,4 @@
-package xyz.jadonfowler.sounds.database
+package xyz.jadonfowler.sounds.server.database
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Table
@@ -6,7 +6,9 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.SchemaUtils.create
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
+import xyz.jadonfowler.sounds.server.config
 import xyz.jadonfowler.sounds.structure.*
+import java.io.File
 
 interface SongDatabase {
 
@@ -25,7 +27,7 @@ class SQLDatabase(val host: String) : SongDatabase {
     object Songs : Table() {
         val id = varchar("id", 32).primaryKey()
         val title = varchar("title", 64)
-        val artist = varchar("artist", 64)
+        val artists = varchar("artists", 128)
     }
 
     fun start() {
@@ -40,7 +42,7 @@ class SQLDatabase(val host: String) : SongDatabase {
             Songs.insert {
                 it[id] = song.id
                 it[title] = song.songDetails.title
-                it[artist] = song.songDetails.artist
+                it[artists] = song.songDetails.artists.joinToString("\n")
             }
         }
     }
@@ -51,9 +53,9 @@ class SQLDatabase(val host: String) : SongDatabase {
             Songs.select { Songs.title.like("%$query%") }.forEach {
                 val id = it[Songs.id]
                 val title = it[Songs.title]
-                val artist = it[Songs.artist]
-                songs.add(Song(id, ByteArray(0), // TODO: Read from file using ID
-                        SongDetails(title, artist)
+                val artists = it[Songs.artists]
+                songs.add(Song(id, File(config.rootFolder + "songs" + File.separator + id).readBytes(),
+                        SongDetails(title, artists.split("\n"))
                 ))
             }
         }

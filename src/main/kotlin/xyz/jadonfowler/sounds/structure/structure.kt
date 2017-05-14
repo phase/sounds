@@ -7,7 +7,7 @@ class User(
 
 class SongDetails(
         val title: String,
-        val artist: String
+        val artists: List<String>
 )
 
 class Song(
