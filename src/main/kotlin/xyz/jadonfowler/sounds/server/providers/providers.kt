@@ -6,6 +6,7 @@ import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File
 import me.doubledutch.lazyjson.LazyObject
 import xyz.jadonfowler.sounds.server.config
+import xyz.jadonfowler.sounds.server.server
 import xyz.jadonfowler.sounds.structure.Song
 import xyz.jadonfowler.sounds.structure.SongDetails
 import xyz.jadonfowler.sounds.structure.md5Hash
@@ -61,6 +62,7 @@ class LocalFileProvider(handler: (Song) -> Unit) : SongProvider(handler) {
                 findFiles(it)
             else if (it.extension == "mp3") {
                 val (id, songFile) = store(it.readBytes())
+                if (server.database.songExists(id)) return
                 val bytes = songFile.readBytes()
                 val mp3 = Mp3File(songFile)
                 val song = if (mp3.hasId3v1Tag()) {
@@ -144,7 +146,17 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
         val newBytes = File(newPath).readBytes()
         val (id, songFile) = store(newBytes)
         val newerBytes = songFile.readBytes()
-        handler(Song(id, newerBytes, SongDetails(title, listOf(artist))))
+
+        if (server.database.songExists(id)) return
+
+        print("$title by $artist: ")
+        val input = readLine()
+        if (input.isNullOrEmpty()) return
+        val info = input!!.split(" by ")
+        val songTitle = info[0]
+        val artists = info[1].split(", ")
+
+        handler(Song(id, newerBytes, SongDetails(songTitle, artists)))
     }
 
     fun getTrackInfo(user: String, track: String): Triple<String, String, String> {

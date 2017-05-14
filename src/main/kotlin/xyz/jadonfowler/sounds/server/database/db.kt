@@ -17,14 +17,18 @@ interface SongDatabase {
 
     // fun queryArtist(query: String): List<Artist>
 
+    fun updateDetails(id: String, details: SongDetails)
+
+    fun songExists(id: String): Boolean
+
 }
 
 class SQLDatabase(val host: String, val port: Int = 3306, val database: String, val user: String, val password: String) : SongDatabase {
 
     object Songs : Table() {
         val id = varchar("id", 32).primaryKey()
-        val title = varchar("title", 64)
-        val artists = varchar("artists", 128)
+        val title = varchar("title", 200)
+        val artists = varchar("artists", 200)
     }
 
     fun start() {
@@ -34,7 +38,8 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
                         "&useJDBCCompliantTimezoneShift=true" +
                         "&useLegacyDatetimeCode=false" +
                         "&serverTimezone=UTC" +
-                        "&nullNamePatternMatchesAll=true",
+                        "&nullNamePatternMatchesAll=true" +
+                        "&useSSL=false",
                 "com.mysql.cj.jdbc.Driver",
                 user, password
         )
@@ -44,17 +49,26 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
     }
 
     override fun storeSong(song: Song) {
+        val songTitle = song.songDetails.title
+        val songArtists = song.songDetails.artists.joinToString("\n")
         transaction {
-            if (Songs.select { Songs.id.eq(song.id) }.empty()) {
-                Songs.insert {
-                    it[id] = song.id
-                    it[title] = song.songDetails.title
-                    it[artists] = song.songDetails.artists.joinToString("\n")
+            val sameId = Songs.select { Songs.id eq song.id }
+            if (sameId.empty()) {
+                val sameSong = Songs.select { (Songs.title eq songTitle) and (Songs.artists eq songArtists) }
+                if (sameSong.empty()) {
+                    Songs.insert {
+                        it[id] = song.id
+                        it[title] = songTitle
+                        it[artists] = songArtists
+                    }
+                } else {
+                    val duplicate = sameSong.first()[Songs.id]
+                    System.err.println("$songTitle by $songArtists is in the database, with the id of $duplicate.")
                 }
             } else {
-                System.err.println("Tried to store ${song.songDetails.title} " +
-                        "by ${song.songDetails.artists.joinToString(", ")} in the database, " +
-                        "but there is already a song with the id of ${song.id}")
+                System.err.println("Tried to store $songTitle " +
+                        "by $songArtists in the database, " +
+                        "but there is already a song with the id of ${song.id}.")
             }
         }
     }
@@ -75,5 +89,22 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
     }
 
     override fun queryAlbum(query: String): List<Album> = listOf() // TODO
+
+    override fun updateDetails(id: String, details: SongDetails) {
+        transaction {
+            Songs.update({ Songs.id eq id }) {
+                it[title] = details.title
+                it[artists] = details.artists.joinToString("\n")
+            }
+        }
+    }
+
+    override fun songExists(id: String): Boolean {
+        var r = false
+        transaction {
+            r = !Songs.select { Songs.id eq id }.empty()
+        }
+        return r
+    }
 
 }
