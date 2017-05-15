@@ -99,7 +99,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
     }
 
     override fun collect() {
-        downloadTopCharts("hiphoprap")
+//        downloadTopCharts("hiphoprap")
     }
 
     fun downloadTopCharts(genre: String) {

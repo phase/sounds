@@ -1,6 +1,7 @@
 package xyz.jadonfowler.sounds.server
 
 import com.mpatric.mp3agic.Mp3File
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import xyz.jadonfowler.sounds.server.database.SQLDatabase
@@ -37,31 +38,54 @@ class SoundsServer(nettyServerPort: Int) {
             password = config.database.sqlPassword
     )
 
-    val nettyServer = Server(SoundsProtocol, nettyServerPort, object : ChannelInboundHandlerAdapter() {
+    val nettyServer = Server(SoundsProtocol, nettyServerPort, @ChannelHandler.Sharable object : ChannelInboundHandlerAdapter() {
+
         override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
             if (msg is Packet) {
                 when (msg) {
                     is QueryPacket -> {
                         ctx?.let {
-                            ctx.write(QueryResponseStartPacket())
+                            val startPacket = QueryResponseStartPacket()
+                            startPacket.query = msg.query
+                            ctx.write(startPacket)
                             database.querySong(msg.query).forEach {
                                 val songPacket = SongPacket()
                                 songPacket.song = it
                                 ctx.write(songPacket)
                             }
-                            ctx.write(QueryResponseEndPacket())
+                            val endPacket = QueryResponseEndPacket()
+                            endPacket.query = msg.query
+                            ctx.writeAndFlush(endPacket)
+                        }
+                    }
+                    is RequestSongPacket -> {
+                        val id = msg.id
+                        println("Server got request packet with $id.")
+                        if (database.songExists(id)) {
+                            ctx?.let {
+                                val songPacket = SongPacket()
+                                songPacket.song = database.retrieveSongById(id)
+                                ctx.writeAndFlush(songPacket)
+                            }
                         }
                     }
                 }
             } else println("Got message: $msg")
         }
+
+        override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
+            super.exceptionCaught(ctx, cause)
+            cause?.cause?.printStackTrace()
+        }
+
     })
 
     fun start() {
         database.start()
-//        nettyServer.start()
+        nettyServer.start()
         songProviders.forEach {
-            it.start()/*
+            it.start()
+            /*
             if (it is YouTubeProvider) {
                 it.download("https://www.youtube.com/watch?v=_qePRhlFEN0", "Emoji", "XXXTentacion")
                 it.download("https://www.youtube.com/watch?v=s1CY9AYUa7U", "Gospel", "XXXTentacion", "Rich Chigga", "Keith Ape")

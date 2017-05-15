@@ -23,6 +23,8 @@ interface SongDatabase {
 
     fun retrieveSongsByArtist(artist: String): List<Song>
 
+    fun retrieveSongById(id: String): Song
+
 }
 
 class SQLDatabase(val host: String, val port: Int = 3306, val database: String, val user: String, val password: String) : SongDatabase {
@@ -121,6 +123,14 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
             }
         }
         return songs
+    }
+
+    override fun retrieveSongById(id: String): Song {
+        var song: Song? = null
+        transaction {
+            song = Songs.select { Songs.id eq id }.first().toSong()
+        }
+        return song!!
     }
 
 }

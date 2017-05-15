@@ -109,14 +109,14 @@ class UserInfoPacket : Packet {
 
 class RequestSongPacket : Packet {
 
-    lateinit var songDetails: SongDetails
+    lateinit var id: String
 
     override fun read(buf: ByteBuf) {
-        songDetails = buf.readSongDetails()
+        id = buf.readString()
     }
 
     override fun write(buf: ByteBuf) {
-        buf.writeSongDetails(songDetails)
+        buf.writeString(id)
     }
 
 }
@@ -165,20 +165,28 @@ class QueryPacket : Packet {
 
 class QueryResponseStartPacket : Packet {
 
+    lateinit var query: String
+
     override fun read(buf: ByteBuf) {
+        query = buf.readString()
     }
 
     override fun write(buf: ByteBuf) {
+        buf.writeString(query)
     }
 
 }
 
 class QueryResponseEndPacket : Packet {
 
+    lateinit var query: String
+
     override fun read(buf: ByteBuf) {
+        query = buf.readString()
     }
 
     override fun write(buf: ByteBuf) {
+        buf.writeString(query)
     }
 
 }

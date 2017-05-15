@@ -37,7 +37,7 @@ data class Protocol(val packets: Map<Int, Class<out Packet>>) : Map<Int, Class<o
     }
 
     operator fun get(packet: Packet?): Int {
-        return packets.filter { it.value == packet }.entries.first().key
+        return packets.filter { it.value == packet?.javaClass }.entries.first().key
     }
 
 }
@@ -49,7 +49,8 @@ abstract class PacketHandler(val protocol: Protocol) {
 class PacketEncoder(val protocol: Protocol) : MessageToByteEncoder<Packet>() {
 
     override fun encode(ctx: ChannelHandlerContext?, msg: Packet?, out: ByteBuf?) {
-        out!!.writeByte(protocol[msg])
+        val id = protocol[msg]
+        out!!.writeByte(id)
         msg!!.write(out)
     }
 
@@ -79,10 +80,11 @@ class Server(val protocol: Protocol, val port: Int, val handler: ChannelInboundH
                     .channel(NioServerSocketChannel::class.java)
                     .childHandler(object : ChannelInitializer<SocketChannel>() {
                         public override fun initChannel(ch: SocketChannel) {
-                            ch.pipeline().addLast(PacketEncoder(protocol), handler)
+                            ch.pipeline().addLast(PacketEncoder(protocol), PacketDecoder(protocol), handler)
                         }
                     })
                     .option(ChannelOption.SO_BACKLOG, 128)
+                    .option(ChannelOption.AUTO_READ, true)
                     .childOption(ChannelOption.SO_KEEPALIVE, true)
 
             // Bind and start to accept incoming connections.
@@ -98,42 +100,55 @@ class Server(val protocol: Protocol, val port: Int, val handler: ChannelInboundH
 
 }
 
-class Client(val protocol: Protocol, val port: Int, val host: String, val handler: PacketHandler) {
+class Client(val protocol: Protocol, val host: String, val port: Int, val handler: PacketHandler) {
 
     lateinit var channel: Channel
+    lateinit var thread: Thread
 
-    fun start() {
-        val workerGroup = NioEventLoopGroup()
-        try {
-            val b = Bootstrap()
-            b.group(workerGroup)
-            b.channel(NioSocketChannel::class.java)
-            b.option(ChannelOption.SO_KEEPALIVE, true)
-            val client = this
-            b.handler(object : ChannelInitializer<SocketChannel>() {
-                public override fun initChannel(ch: SocketChannel) {
-                    channel = ch
-                    channel.pipeline().addLast(PacketDecoder(protocol), object : ChannelInboundHandlerAdapter() {
-                        override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
-                            if (msg is Packet)
-                                handler.receive(client, msg)
-                        }
-                    })
-                }
-            })
+    fun start(ready: () -> Unit) {
+        thread = Thread {
+            val workerGroup = NioEventLoopGroup()
+            try {
+                val b = Bootstrap()
+                b.group(workerGroup)
+                b.channel(NioSocketChannel::class.java)
+                b.option(ChannelOption.SO_KEEPALIVE, true)
+                val client = this
+                b.handler(object : ChannelInitializer<SocketChannel>() {
+                    public override fun initChannel(ch: SocketChannel) {
+                        channel = ch
+                        channel.pipeline().addLast(PacketEncoder(protocol), PacketDecoder(protocol), object : ChannelInboundHandlerAdapter() {
 
-            // Start the client.
-            val f = b.connect(host, port).sync()
+                            override fun channelActive(ctx: ChannelHandlerContext?) {
+                                super.channelActive(ctx)
+                                ready()
+                            }
 
-            // Wait until the connection is closed.
-            f.channel().closeFuture().sync()
-        } finally {
-            workerGroup.shutdownGracefully()
+                            override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+                                if (msg is Packet)
+                                    handler.receive(client, msg)
+                            }
+
+                        })
+                    }
+                })
+
+                // Start the client.
+                val f = b.connect(host, port).sync()
+
+                // Wait until the connection is closed.
+                f.channel().closeFuture().sync()
+            } finally {
+                workerGroup.shutdownGracefully()
+            }
         }
+        thread.start()
     }
 
     fun send(packet: Packet) {
-        channel.writeAndFlush(packet)
+        val future = channel.writeAndFlush(packet).sync()
+        future.await()
+        future.cause()?.cause?.printStackTrace()
     }
 
 }
