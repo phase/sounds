@@ -20,6 +20,9 @@ repositories {
     maven {
         url "https://dl.bintray.com/kotlin/exposed/"
     }
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots"
+    }
 }
 
 dependencies {
@@ -32,4 +35,6 @@ dependencies {
     compile 'com.github.kittinunf.fuel:fuel:1.6.0'
     compile 'me.doubledutch:lazyjson:2.2.1'
     compile 'mysql:mysql-connector-java:6.0.+'
+    compile 'io.vertx:vertx-web:3.4.1'
+    compile "io.vertx:vertx-web-templ-jade:3.4.1"
 }
