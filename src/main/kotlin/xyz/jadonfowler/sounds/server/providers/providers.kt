@@ -4,12 +4,14 @@ import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.util.toHexString
 import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File
+import me.doubledutch.lazyjson.LazyArray
 import me.doubledutch.lazyjson.LazyObject
 import xyz.jadonfowler.sounds.server.config
 import xyz.jadonfowler.sounds.server.server
 import xyz.jadonfowler.sounds.structure.Song
 import xyz.jadonfowler.sounds.structure.SongDetails
 import xyz.jadonfowler.sounds.structure.md5Hash
+import xyz.jadonfowler.sounds.structure.stripFeaturedArtists
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -91,6 +93,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
     val topChartsUrl = "https://api-v2.soundcloud.com/charts?kind=top&genre=soundcloud%3Agenres%3A@GENRE@" +
             "&client_id=${config.soundcloud.clientId}" +
             "&limit=200&offset=0&linked_partitioning=1"
+    val userTracksUrl = "http://api.soundcloud.com/users/@USER@/tracks?client_id=${config.soundcloud.clientId}"
 
     override fun search(query: String) {
     }
@@ -151,7 +154,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
 
         print("$title by $artist: ")
         val input = readLine()
-        if (input.isNullOrEmpty()) return
+        if (input?.trim().isNullOrEmpty()) return
         val info = input!!.split(" by ")
         val songTitle = info[0]
         val artists = info[1].split(", ")
@@ -170,6 +173,41 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
         val title = info.split("title\":\"")[1].split("\",")[0]
         val artist = info.split("username\":\"")[1].split("\",")[0]
         return Triple(id, title, artist)
+    }
+
+    fun getUserId(user: String): String {
+        val url = resolveUrl.replace("@USER@", user).replace("@TRACK@", "")
+        val (_, _, result) = url.httpGet().responseString()
+        val (json, _) = result
+        val jsonObject = LazyObject(json)
+        return jsonObject.getInt("id").toString()
+    }
+
+    fun downloadTracksFromUser(user: String, artist: String) {
+        val id = getUserId(user)
+        val url = userTracksUrl.replace("@USER@", id)
+        val (_, _, result) = url.httpGet().responseString()
+        val (json, _) = result
+        val jsonArray = LazyArray(json)
+        (0..jsonArray.length() - 1).forEach {
+            // Get attributes
+            val trackObject = jsonArray.getJSONObject(it)
+            val trackId = trackObject.getInt("id").toString()
+            val trackTitle = trackObject.getString("title")
+
+            // Download song
+            val trackUrl = downloadUrl.replace("@TRACKID@", trackId)
+            val (_, _, r) = trackUrl.httpGet().response()
+            val bytes = r.component1() ?: ByteArray(0)
+
+            // Fix title & artist
+            val (fixedTitle, fixedArtists) = stripFeaturedArtists(trackTitle, artist)
+
+            // Upload song
+            val (songId, _) = store(bytes)
+            val song = Song(songId, bytes, SongDetails(fixedTitle, fixedArtists))
+            handler(song)
+        }
     }
 
 }

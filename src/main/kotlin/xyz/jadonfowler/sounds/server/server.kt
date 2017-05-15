@@ -61,14 +61,14 @@ class SoundsServer(nettyServerPort: Int) {
         database.start()
 //        nettyServer.start()
         songProviders.forEach {
-            it.start()
+            it.start()/*
             if (it is YouTubeProvider) {
                 it.download("https://www.youtube.com/watch?v=_qePRhlFEN0", "Emoji", "XXXTentacion")
                 it.download("https://www.youtube.com/watch?v=s1CY9AYUa7U", "Gospel", "XXXTentacion", "Rich Chigga", "Keith Ape")
                 it.download("https://www.youtube.com/watch?v=roEZqhB_V50", "Going Down To Underwater", "Keith Ape", "Ski Mash The Slump God")
                 it.download("https://www.youtube.com/watch?v=QljRe99OMCU", "Eung Freestyle", "Live", "Sik-K", "Punchnello", "Owen Ovadoz", "Flowsik")
-            }
-        }
+            }*/
+        }/*
         database.querySong("Go").forEach {
             println("Found ${it.songDetails.title} by ${it.songDetails.artists.joinToString(", ")}. (${it.id})")
         }
@@ -77,7 +77,7 @@ class SoundsServer(nettyServerPort: Int) {
         }
         database.retrieveSongsByArtist("Kodak Black").forEach {
             println("Found ${it.songDetails.title} by ${it.songDetails.artists.joinToString(", ")}. (${it.id})")
-        }
+        }*/
     }
 
     fun uploadSong(file: File) {
@@ -99,8 +99,8 @@ class SoundsServer(nettyServerPort: Int) {
     }
 
     fun uploadSong(song: Song) {
-        println("Uploading Song: ${song.songDetails.title} by ${song.songDetails.artists.joinToString(", ")} with id ${song.id}.")
         if (!database.songExists(song.id)) {
+            println("Uploading Song: ${song.songDetails.title} by ${song.songDetails.artists.joinToString(", ")} with id ${song.id}.")
             database.storeSong(song)
         }
     }

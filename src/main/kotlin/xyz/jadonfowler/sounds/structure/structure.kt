@@ -1,5 +1,7 @@
 package xyz.jadonfowler.sounds.structure
 
+import java.util.regex.Pattern
+
 class User(
         val name: String,
         val session: String
@@ -26,3 +28,23 @@ class Album(
         val id: String,
         val songIds: Array<String>
 )
+
+private val featuredPattern1 = Pattern.compile("""(.*) \(feat\. (.*)\)""")
+private val featuredPattern2 = Pattern.compile("""(.*) \(ft\. (.*)\)""")
+
+fun stripFeaturedArtists(title: String, artist: String): Pair<String, List<String>> {
+    val matcher1 = featuredPattern1.matcher(title)
+    val matcher2 = featuredPattern2.matcher(title)
+
+    if (matcher1.matches()) {
+        val strippedTitle = matcher1.group(1)
+        val artists = listOf(artist, matcher1.group(2))
+        return Pair(strippedTitle, artists)
+    } else if (matcher2.matches()) {
+        val strippedTitle = matcher2.group(1)
+        val artists = listOf(artist, matcher2.group(2))
+        return Pair(strippedTitle, artists)
+    }
+
+    return Pair(title, listOf(artist))
+}
