@@ -64,6 +64,7 @@ class SoundsServer(nettyServerPort: Int) {
                         if (database.songExists(id)) {
                             ctx?.let {
                                 val songPacket = SongPacket()
+                                songPacket.transactionId = msg.transactionId
                                 songPacket.song = database.retrieveSongById(id)
                                 ctx.writeAndFlush(songPacket)
                             }

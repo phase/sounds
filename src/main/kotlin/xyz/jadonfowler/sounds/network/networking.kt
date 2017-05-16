@@ -12,11 +12,18 @@ import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.MessageToByteEncoder
 import io.netty.handler.codec.ReplayingDecoder
 import java.nio.charset.Charset
-import java.util.*
 
-interface Packet {
-    fun write(buf: ByteBuf)
-    fun read(buf: ByteBuf)
+open class Packet {
+
+    var transactionId: Int = -1
+
+    open fun write(buf: ByteBuf) {
+        buf.writeInt(transactionId)
+    }
+
+    open fun read(buf: ByteBuf) {
+        transactionId = buf.readInt()
+    }
 }
 
 fun ByteBuf.writeString(s: String) {
@@ -106,6 +113,9 @@ class Client(val protocol: Protocol, val host: String, val port: Int, val handle
     lateinit var channel: Channel
     lateinit var thread: Thread
 
+    val handlers = mutableMapOf<Int, (Packet) -> Unit>()
+    var transactionCounter = 0
+
     fun start(ready: () -> Unit) {
         thread = Thread {
             val workerGroup = NioEventLoopGroup()
@@ -126,8 +136,10 @@ class Client(val protocol: Protocol, val host: String, val port: Int, val handle
                             }
 
                             override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
-                                if (msg is Packet)
+                                if (msg is Packet) {
+                                    handlers[msg.transactionId]?.invoke(msg)
                                     handler.receive(client, msg)
+                                }
                             }
 
                         })
@@ -146,7 +158,13 @@ class Client(val protocol: Protocol, val host: String, val port: Int, val handle
         thread.start()
     }
 
-    fun send(packet: Packet) {
+    fun send(packet: Packet, handler: (Packet) -> Unit) {
+        packet.transactionId = transactionCounter
+        handlers.put(transactionCounter, handler)
+
+        if (transactionCounter == Integer.MAX_VALUE) transactionCounter = 1
+        else transactionCounter++
+
         val future = channel.writeAndFlush(packet).sync()
         future.await()
         future.cause()?.cause?.printStackTrace()

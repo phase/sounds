@@ -35,7 +35,7 @@ class SoundsClient(host: String, port: Int) {
     }
 
     fun send(packet: Packet) {
-        nettyClient.send(packet)
+        nettyClient.send(packet) {}
     }
 
     companion object {

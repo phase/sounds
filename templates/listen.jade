@@ -1,7 +1,47 @@
 doctype html
 html
-  head
-    Sounds
-  body
-    h1 Sounds
-    p This is some crazy shit!
+    head
+        title Sounds
+
+    body
+        h1 Listening to #{context.title} by #{context.artists}.
+        p This is some crazy shit!
+        hr
+
+        audio#song(loop="loop" preload="auto")
+            source(src="/stream/#{context.id}" type="audio/ogg")
+            p No support.
+
+        div#controls
+            p Test
+            input#slider(type="range" oninput="sliderChange(this.value)")
+            button#play Play
+
+        script.
+            let song = document.getElementById("song")
+            let slider = document.getElementById("slider")
+
+            function sliderChange(value) {
+                console.log("oninput called")
+                let second = ~~(value / 100 * song.duration)
+                console.log(second)
+                song.currentTime = second
+            }
+
+            window.onload = function() {
+                console.log(song.duration)
+                slider.value = 0
+
+                document.getElementById("play").addEventListener("click", function() {
+                    if (song.paused)
+                        song.play()
+                    else
+                        song.pause()
+                }, false)
+
+                song.addEventListener("timeupdate", function(e) {
+                    let time = e.target.currentTime
+                    let percentDone = ~~(time / song.duration * 100)
+                    slider.value = percentDone
+                }, false)
+            }
