@@ -199,35 +199,3 @@ class QueryPacket : Packet() {
     }
 
 }
-
-class QueryResponseStartPacket : Packet() {
-
-    lateinit var query: String
-
-    override fun read(buf: ByteBuf) {
-        super.read(buf)
-        query = buf.readString()
-    }
-
-    override fun write(buf: ByteBuf) {
-        super.write(buf)
-        buf.writeString(query)
-    }
-
-}
-
-class QueryResponseEndPacket : Packet() {
-
-    lateinit var query: String
-
-    override fun read(buf: ByteBuf) {
-        super.read(buf)
-        query = buf.readString()
-    }
-
-    override fun write(buf: ByteBuf) {
-        super.write(buf)
-        buf.writeString(query)
-    }
-
-}

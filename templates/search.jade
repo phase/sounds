@@ -1,0 +1,11 @@
+doctype html
+html
+    head
+        title Sounds
+    body
+        h1 Sounds
+        p This is some crazy shit!
+        hr
+
+        each song in context.get("songs")
+            p= song.songDetails.title + " by " + song.songDetails.artists

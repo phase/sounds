@@ -4,6 +4,7 @@ import com.github.kittinunf.fuel.util.toHexString
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServer
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.templ.JadeTemplateEngine
 import io.vertx.ext.web.templ.TemplateEngine
@@ -69,14 +70,25 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
             nettyClient.send(requestPacket) {
                 if (it is SongPacket) {
                     val bytes = it.song.bytes
-//                    val temp = ThreadLocalRandom.current().nextLong(1, 1000000).toHexString()
-//                    val tempMp3 = config.rootFolder + "temp" + File.separator + temp + ".mp3"
-//                    val tempOgg = config.rootFolder + "temp" + File.separator + temp + ".ogg"
-//                    File(tempMp3).writeBytes(bytes)
-//                    val process = Runtime.getRuntime().exec("ffmpeg -i $tempMp3 $tempOgg")
-//                    process.waitFor()
-//                    val oggBytes = File(tempOgg).readBytes()
                     ctx.response().end(Buffer.buffer(bytes))
+                }
+            }
+        }
+
+        router.get("/search/:query").handler { ctx ->
+            val query = ctx.request().getParam("query")
+            val queryPacket = QueryPacket()
+            queryPacket.query = query
+            nettyClient.send(queryPacket) {
+                if (it is SongListPacket) {
+                    ctx.put("songs", it.songs)
+                    engine.render(ctx, "templates/search.jade") { res ->
+                        if (res.succeeded()) {
+                            ctx.response().end(res.result())
+                        } else {
+                            ctx.fail(res.cause())
+                        }
+                    }
                 }
             }
         }

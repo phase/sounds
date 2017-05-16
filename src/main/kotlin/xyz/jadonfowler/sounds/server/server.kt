@@ -45,17 +45,10 @@ class SoundsServer(nettyServerPort: Int) {
                 when (msg) {
                     is QueryPacket -> {
                         ctx?.let {
-                            val startPacket = QueryResponseStartPacket()
-                            startPacket.query = msg.query
-                            ctx.write(startPacket)
-                            database.querySong(msg.query).forEach {
-                                val songPacket = SongPacket()
-                                songPacket.song = it
-                                ctx.write(songPacket)
-                            }
-                            val endPacket = QueryResponseEndPacket()
-                            endPacket.query = msg.query
-                            ctx.writeAndFlush(endPacket)
+                            val responsePacket = SongListPacket()
+                            responsePacket.transactionId = msg.transactionId
+                            responsePacket.songs = database.querySong(msg.query)
+                            ctx.writeAndFlush(responsePacket)
                         }
                     }
                     is RequestSongPacket -> {

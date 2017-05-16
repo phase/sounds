@@ -18,14 +18,6 @@ class SoundsClient(host: String, port: Int) {
                         queries[it]?.add(song)
                     }
                 }
-                is QueryResponseStartPacket -> {
-                    queries[packet.query] = mutableListOf()
-                    currentQuery = packet.query
-                }
-                is QueryResponseEndPacket -> {
-                    println("Done getting results for '${packet.query}'.")
-                    currentQuery = null
-                }
             }
         }
     })
