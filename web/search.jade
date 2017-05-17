@@ -1,0 +1,5 @@
+extends base
+
+block content
+    each song in context.get("songs")
+        p!= '<a href="/listen/' + song.id + '">' + song.title + "</a>" + " by " + song.artists

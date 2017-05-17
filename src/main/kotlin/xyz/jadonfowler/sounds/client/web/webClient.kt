@@ -5,7 +5,6 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServer
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.templ.JadeTemplateEngine
-import io.vertx.ext.web.templ.TemplateEngine
 import xyz.jadonfowler.sounds.network.*
 
 class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webServerPort: Int) {
@@ -14,7 +13,7 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
 
     val webServer: HttpServer = vertx.createHttpServer()
 
-    val engine: TemplateEngine = JadeTemplateEngine.create()
+    val engine: JadeTemplateEngine = JadeTemplateEngine.create()
 
     val router: Router = Router.router(vertx)
 
@@ -27,7 +26,7 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
     init {
         // Setup web server
         router.get("/").handler { ctx ->
-            engine.render(ctx, "templates/index.jade") { res ->
+            engine.render(ctx, "web/index.jade") { res ->
                 if (res.succeeded()) {
                     ctx.response().end(res.result())
                 } else {
@@ -46,7 +45,7 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
                     ctx.put("artists", it.info.artists.joinToString(", "))
                     ctx.put("id", it.info.id)
 
-                    engine.render(ctx, "templates/listen.jade") { res ->
+                    engine.render(ctx, "web/listen.jade") { res ->
                         if (res.succeeded()) {
                             ctx.response().end(res.result())
                         } else {
@@ -76,7 +75,7 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
             nettyClient.send(queryPacket) {
                 if (it is SongInfoListPacket) {
                     ctx.put("songs", it.songs)
-                    engine.render(ctx, "templates/search.jade") { res ->
+                    engine.render(ctx, "web/search.jade") { res ->
                         if (res.succeeded()) {
                             ctx.response().end(res.result())
                         } else {

@@ -1,0 +1,57 @@
+extends base
+
+block head
+    //
+        I'm using Howler not because I want to, but because some dumbass
+        over at Google didn't implement setting an HTML5 Audio object's
+        currentTime correctly. 2017-05-16
+
+    script(src='https://cdnjs.cloudflare.com/ajax/libs/howler/2.0.3/howler.core.min.js')
+    script(src='https://cdnjs.cloudflare.com/ajax/libs/howler/2.0.3/howler.min.js')
+    script(src='https://cdnjs.cloudflare.com/ajax/libs/howler/2.0.3/howler.spatial.min.js')
+
+block content
+    div#controls
+        input#slider(type="range" oninput="sliderChange(this.value)")
+        button#play Play
+
+    script.
+        const slider = document.getElementById("slider")
+        let paused = false
+        let hasBeenPlayed = false
+
+        const song = new Howl({
+            src: ['/stream/#{context.id}'],
+            format: ['mp3'],
+            loop: true,
+            preload: true,
+            autoplay: true,
+            onplay: function () { hasBeenPlayed = true }
+        });
+
+        function sliderChange(value) {
+            let second = ~~(value / 100 * song.duration())
+            song.seek(second)
+        }
+
+        window.onload = function() {
+            slider.value = 0
+
+            document.getElementById("play").addEventListener("click", function() {
+                if (paused) {
+                    song.play()
+                    paused = false
+                } else {
+                    song.pause()
+                    paused = true
+                }
+            }, false)
+
+            setInterval(function() {
+                if (hasBeenPlayed) {
+                    let time = song.seek()
+                    let percentDone = ~~(time / song.duration() * 100)
+                    slider.value = percentDone
+                }
+            }, 500)
+        }
