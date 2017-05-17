@@ -10,7 +10,7 @@ import xyz.jadonfowler.sounds.server.providers.LocalFileProvider
 import xyz.jadonfowler.sounds.server.providers.SoundCloudProvider
 import xyz.jadonfowler.sounds.server.providers.YouTubeProvider
 import xyz.jadonfowler.sounds.structure.Song
-import xyz.jadonfowler.sounds.structure.SongDetails
+import xyz.jadonfowler.sounds.structure.SongInfo
 import xyz.jadonfowler.sounds.structure.md5Hash
 import java.io.File
 
@@ -45,7 +45,7 @@ class SoundsServer(nettyServerPort: Int) {
                 when (msg) {
                     is QueryPacket -> {
                         ctx?.let {
-                            val responsePacket = SongListPacket()
+                            val responsePacket = SongInfoListPacket()
                             responsePacket.transactionId = msg.transactionId
                             responsePacket.songs = database.querySong(msg.query)
                             ctx.writeAndFlush(responsePacket)
@@ -59,6 +59,17 @@ class SoundsServer(nettyServerPort: Int) {
                                 val songPacket = SongPacket()
                                 songPacket.transactionId = msg.transactionId
                                 songPacket.song = database.retrieveSongById(id)
+                                ctx.writeAndFlush(songPacket)
+                            }
+                        }
+                    }
+                    is RequestSongInfoPacket -> {
+                        val id = msg.id
+                        if (database.songExists(id)) {
+                            ctx?.let {
+                                val songPacket = SongInfoPacket()
+                                songPacket.transactionId = msg.transactionId
+                                songPacket.info = database.retrieveSongInfoById(id)
                                 ctx.writeAndFlush(songPacket)
                             }
                         }
@@ -106,19 +117,19 @@ class SoundsServer(nettyServerPort: Int) {
         val song = if (mp3.hasId3v1Tag()) {
             val title = mp3.id3v1Tag.title
             val artist = mp3.id3v1Tag.artist
-            Song(id, bytes, SongDetails(title, listOf(artist)))
+            Song(bytes, SongInfo(id, title, listOf(artist)))
         } else if (mp3.hasId3v2Tag()) {
             val title = mp3.id3v2Tag.title
             val artist = mp3.id3v2Tag.artist
-            Song(id, bytes, SongDetails(title, listOf(artist)))
-        } else Song(id, bytes, SongDetails(file.name, listOf("Unknown Artist")))
+            Song(bytes, SongInfo(id, title, listOf(artist)))
+        } else Song(bytes, SongInfo(id, file.name, listOf("Unknown Artist")))
 
         uploadSong(song)
     }
 
     fun uploadSong(song: Song) {
-        if (!database.songExists(song.id)) {
-            println("Uploading Song: ${song.songDetails.title} by ${song.songDetails.artists.joinToString(", ")} with id ${song.id}.")
+        if (!database.songExists(song.info.id)) {
+            println("Uploading Song: ${song.info.title} by ${song.info.artists.joinToString(", ")} with id ${song.info.id}.")
             database.storeSong(song)
         }
     }

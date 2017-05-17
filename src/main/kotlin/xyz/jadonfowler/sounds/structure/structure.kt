@@ -7,7 +7,8 @@ class User(
         val session: String
 )
 
-class SongDetails(
+class SongInfo(
+        val id: String,
         val title: String,
         val artists: List<String>
 ) {
@@ -19,9 +20,8 @@ class SongDetails(
 }
 
 class Song(
-        val id: String,
         val bytes: ByteArray,
-        val songDetails: SongDetails
+        val info: SongInfo
 )
 
 class Album(

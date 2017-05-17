@@ -3,32 +3,31 @@ package xyz.jadonfowler.sounds.network
 import io.netty.buffer.ByteBuf
 import xyz.jadonfowler.sounds.structure.Album
 import xyz.jadonfowler.sounds.structure.Song
-import xyz.jadonfowler.sounds.structure.SongDetails
+import xyz.jadonfowler.sounds.structure.SongInfo
 import xyz.jadonfowler.sounds.structure.User
 
-fun ByteBuf.writeSongDetails(songDetails: SongDetails) {
-    writeString(songDetails.title)
-    writeString(songDetails.artists.joinToString("\n"))
+fun ByteBuf.writeSongInfo(songInfo: SongInfo) {
+    writeString(songInfo.id)
+    writeString(songInfo.title)
+    writeString(songInfo.artists.joinToString("\n"))
 }
 
-fun ByteBuf.readSongDetails(): SongDetails {
-    return SongDetails(readString(), readString().split("\n"))
+fun ByteBuf.readSongInfo(): SongInfo {
+    return SongInfo(readString(), readString(), readString().split("\n"))
 }
 
 fun ByteBuf.writeSong(song: Song) {
-    writeString(song.id)
-    writeSongDetails(song.songDetails)
+    writeSongInfo(song.info)
     writeInt(song.bytes.size)
     writeBytes(song.bytes)
 }
 
 fun ByteBuf.readSong(): Song {
-    val id = readString()
-    val songDetails = readSongDetails()
+    val songDetails = readSongInfo()
     val length = readInt()
     val bytes = ByteArray(length)
     readBytes(bytes)
-    return Song(id, bytes, songDetails)
+    return Song(bytes, songDetails)
 }
 
 fun ByteBuf.writeAlbum(album: Album) {
@@ -52,7 +51,9 @@ val SoundsProtocol = Protocol(mapOf(
         5 to SongPacket::class.java,
         6 to AlbumPacket::class.java,
         7 to QueryPacket::class.java,
-        8 to SongListPacket::class.java
+        8 to SongInfoListPacket::class.java,
+        9 to SongInfoPacket::class.java,
+        10 to RequestSongInfoPacket::class.java
 ))
 
 class CreateUserPacket : Packet() {
@@ -128,6 +129,22 @@ class RequestSongPacket : Packet() {
 
 }
 
+class RequestSongInfoPacket : Packet() {
+
+    lateinit var id: String
+
+    override fun read(buf: ByteBuf) {
+        super.read(buf)
+        id = buf.readString()
+    }
+
+    override fun write(buf: ByteBuf) {
+        super.write(buf)
+        buf.writeString(id)
+    }
+
+}
+
 class SongPacket : Packet() {
 
     lateinit var song: Song
@@ -144,16 +161,32 @@ class SongPacket : Packet() {
 
 }
 
-class SongListPacket : Packet() {
+class SongInfoPacket : Packet() {
 
-    lateinit var songs: List<Song>
+    lateinit var info: SongInfo
+
+    override fun read(buf: ByteBuf) {
+        super.read(buf)
+        info = buf.readSongInfo()
+    }
+
+    override fun write(buf: ByteBuf) {
+        super.write(buf)
+        buf.writeSongInfo(info)
+    }
+
+}
+
+class SongInfoListPacket : Packet() {
+
+    lateinit var songs: List<SongInfo>
 
     override fun read(buf: ByteBuf) {
         super.read(buf)
         val amount = buf.readInt()
-        val songsRead = ArrayList<Song>(amount)
+        val songsRead = ArrayList<SongInfo>(amount)
         (0..amount - 1).forEach {
-            songsRead.add(buf.readSong())
+            songsRead.add(buf.readSongInfo())
         }
         songs = songsRead
     }
@@ -162,7 +195,7 @@ class SongListPacket : Packet() {
         super.write(buf)
         buf.writeInt(songs.size)
         songs.forEach {
-            buf.writeSong(it)
+            buf.writeSongInfo(it)
         }
     }
 

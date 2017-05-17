@@ -13,7 +13,7 @@ class SoundsClient(host: String, port: Int) {
             when (packet) {
                 is SongPacket -> {
                     val song = packet.song
-                    println("Client received ${song.songDetails.title} by ${song.songDetails.artists.joinToString(", ")}.")
+                    println("Client received ${song.info.title} by ${song.info.artists.joinToString(", ")}.")
                     currentQuery?.let {
                         queries[it]?.add(song)
                     }

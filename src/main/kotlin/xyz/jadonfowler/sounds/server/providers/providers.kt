@@ -9,7 +9,7 @@ import me.doubledutch.lazyjson.LazyObject
 import xyz.jadonfowler.sounds.server.config
 import xyz.jadonfowler.sounds.server.server
 import xyz.jadonfowler.sounds.structure.Song
-import xyz.jadonfowler.sounds.structure.SongDetails
+import xyz.jadonfowler.sounds.structure.SongInfo
 import xyz.jadonfowler.sounds.structure.md5Hash
 import xyz.jadonfowler.sounds.structure.stripFeaturedArtists
 import java.io.BufferedReader
@@ -70,12 +70,12 @@ class LocalFileProvider(handler: (Song) -> Unit) : SongProvider(handler) {
                 val song = if (mp3.hasId3v1Tag()) {
                     val title = mp3.id3v1Tag.title
                     val artist = mp3.id3v1Tag.artist
-                    Song(id, bytes, SongDetails(title, listOf(artist)))
+                    Song(bytes, SongInfo(id, title, listOf(artist)))
                 } else if (mp3.hasId3v2Tag()) {
                     val title = mp3.id3v2Tag.title
                     val artist = mp3.id3v2Tag.artist
-                    Song(id, bytes, SongDetails(title, listOf(artist)))
-                } else Song(id, bytes, SongDetails(it.name, listOf("Unknown Artist")))
+                    Song(bytes, SongInfo(id, title, listOf(artist)))
+                } else Song(bytes, SongInfo(id, it.name, listOf("Unknown Artist")))
                 handler(song)
             }
         }
@@ -159,7 +159,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
         val songTitle = info[0]
         val artists = info[1].split(", ")
 
-        handler(Song(id, newerBytes, SongDetails(songTitle, artists)))
+        handler(Song(newerBytes, SongInfo(id, songTitle, artists)))
     }
 
     fun getTrackInfo(user: String, track: String): Triple<String, String, String> {
@@ -205,7 +205,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
 
             // Upload song
             val (songId, _) = store(bytes)
-            val song = Song(songId, bytes, SongDetails(fixedTitle, fixedArtists))
+            val song = Song(bytes, SongInfo(songId, fixedTitle, fixedArtists))
             handler(song)
         }
     }
@@ -259,7 +259,7 @@ class YouTubeProvider(handler: (Song) -> Unit) : SongProvider(handler) {
         mp3.save(output)
         val bytes = File(output).readBytes()
         val (id, _) = store(bytes)
-        val song = Song(id, bytes, SongDetails(title, artists.toList()))
+        val song = Song(bytes, SongInfo(id, title, artists.toList()))
         handler(song)
     }
 

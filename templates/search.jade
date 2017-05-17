@@ -8,4 +8,4 @@ html
         hr
 
         each song in context.get("songs")
-            p!= '<a href="/listen/' + song.id + '">' + song.songDetails.title + "</a>" + " by " + song.songDetails.artists
+            p!= '<a href="/listen/' + song.id + '">' + song.title + "</a>" + " by " + song.artists

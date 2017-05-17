@@ -1,17 +1,12 @@
 package xyz.jadonfowler.sounds.client.web
 
-import com.github.kittinunf.fuel.util.toHexString
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServer
-import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.templ.JadeTemplateEngine
 import io.vertx.ext.web.templ.TemplateEngine
 import xyz.jadonfowler.sounds.network.*
-import xyz.jadonfowler.sounds.server.config
-import java.io.File
-import java.util.concurrent.ThreadLocalRandom
 
 class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webServerPort: Int) {
 
@@ -43,14 +38,13 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
 
         router.get("/listen/:id").handler { ctx ->
             val id = ctx.request().getParam("id")
-            val requestPacket = RequestSongPacket()
+            val requestPacket = RequestSongInfoPacket()
             requestPacket.id = id
             nettyClient.send(requestPacket) {
-                if (it is SongPacket) {
-                    val song = it.song
-                    ctx.put("title", song.songDetails.title)
-                    ctx.put("artists", song.songDetails.artists.joinToString(", "))
-                    ctx.put("id", id)
+                if (it is SongInfoPacket) {
+                    ctx.put("title", it.info.title)
+                    ctx.put("artists", it.info.artists.joinToString(", "))
+                    ctx.put("id", it.info.id)
 
                     engine.render(ctx, "templates/listen.jade") { res ->
                         if (res.succeeded()) {
@@ -80,7 +74,7 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
             val queryPacket = QueryPacket()
             queryPacket.query = query
             nettyClient.send(queryPacket) {
-                if (it is SongListPacket) {
+                if (it is SongInfoListPacket) {
                     ctx.put("songs", it.songs)
                     engine.render(ctx, "templates/search.jade") { res ->
                         if (res.succeeded()) {
