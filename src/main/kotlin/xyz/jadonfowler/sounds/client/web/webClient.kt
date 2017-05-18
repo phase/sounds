@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServer
 import io.vertx.ext.web.Router
+import io.vertx.ext.web.handler.StaticHandler
 import io.vertx.ext.web.templ.JadeTemplateEngine
 import xyz.jadonfowler.sounds.network.*
 
@@ -85,6 +86,8 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
                 }
             }
         }
+
+        router.get("/static/*").handler(StaticHandler.create("web/static/").setCachingEnabled(false))
 
         router.exceptionHandler(Throwable::printStackTrace)
     }

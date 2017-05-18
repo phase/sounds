@@ -1,0 +1,59 @@
+<title>localhosting my apaches</title>
+<style>body{background:black;color:white;}</style>
+<h1>Howler.js & The Incredible Story of Another Chrome Incompatibility</h1>
+<hr>
+<pre><code>
+[6:41 PM] phase: Do you guys know how to go to a specific second using an HTML Audio element?
+[6:42 PM] phase: audio.currentTime = second doesn't seem to work
+[6:46 PM] Connor (Vectrix): Web Audio?
+[6:46 PM] Connor (Vectrix): Uh
+[6:52 PM] phase: yeah
+[6:52 PM] phase: using the native HTML5 Audio element &lt;audio&gt;
+[6:53 PM] phase: Isn't this the channel for a Digital Audio Workstation in Web Technology? ;)(edited)
+[6:57 PM] phase: I'm reading that the problem is that Chrome can't handle MP3 files correctly in the audio element.
+[6:57 PM] phase: If that's it I'm actually going to flip my lid.
+[6:58 PM] Connor (Vectrix): That's dumb
+[6:58 PM] Connor (Vectrix): In all honesty I haven't paid much attention to the web audio side
+[6:59 PM] Connor (Vectrix): Just the node steams / pull stream audio side
+[7:12 PM] phase: When the web client requests the song from the web server, the web server has to send a song request
+    packet to the server with the database and wait for a response packet that contains the bytes for the song. Then
+    the web server has to write those bytes to a temp file, convert it to an OGG, read the bytes back, and sent them
+    to the web client. It does all that shit with only the smallest of hickups when it runs the audio convert command.
+[7:12 PM] phase: And converting it to an OGG didn't do shit, setting the time still doesn't work.
+[7:12 PM] Connor (Vectrix): @jamen
+[7:13 PM] phase: Without converting the file there is literally no lag
+[7:13 PM] phase: Computers are fucking fast
+[7:18 PM] phase: Chrome is shit
+[7:18 PM] Connor (Vectrix): I have a feeling
+[7:18 PM] phase: It works completely fine on FireFox
+[7:19 PM] Connor (Vectrix): you do not set the currentTime value
+[7:19 PM] phase: What do you set?
+[7:19 PM] Connor (Vectrix): You can start a buffer source from a specific time though for playback
+[7:19 PM] Connor (Vectrix): bufferSource.start(0)
+[7:19 PM] phase: that's not what I want though
+[7:19 PM] Connor (Vectrix): Ok
+[7:19 PM] phase: the hell are you looking at
+[7:19 PM] phase: HTML Audio
+[7:20 PM] phase: that's nowhere near the API docs I'm seeing
+[7:20 PM] Connor (Vectrix): currentTime of type double, readonly
+[7:20 PM] phase: not in FireFox
+[7:20 PM] Connor (Vectrix): the variable is readonly
+[7:20 PM] phase: link me that
+[7:20 PM] Connor (Vectrix): https://webaudio.github.io/web-audio-api/#widl-BaseAudioContext-currentTime
+[7:21 PM] Connor (Vectrix): Go here
+[7:21 PM] Connor (Vectrix): https://webaudio.github.io/web-audio-api/#attributes
+[7:21 PM] Connor (Vectrix): read the first one as its on currentTime
+[7:23 PM] phase: https://www.webcodegeeks.com/html5/html5-audio-player-example/ says differently
+[7:23 PM] phase: https://www.w3schools.com/jsref/prop_audio_currenttime.asp says differently
+[7:24 PM] Connor (Vectrix): Yeah the webaudio docs say currentTime is readonly
+[7:24 PM] phase: W3 also says fastSeek() is a function but it doesn't exist
+[7:24 PM] Connor (Vectrix): and the one you posted doesn't
+[7:24 PM] Connor (Vectrix): ¯\_(ツ)_/¯
+[7:24 PM] Connor (Vectrix): I think W3 is outdated
+[7:24 PM] Connor (Vectrix): or that post I mean
+[7:26 PM] phase: If it's outdated, doesn't that mean only new features would have been added?
+[7:26 PM] phase: It works fine in FireFox, so it's a Chrome problem.
+[7:29 PM] phase: The default CSS in FireFox is extremely different from Chrome...
+[7:43 PM] phase: fuck it, I'm limiting the web app to only FireFox
+[9:01 PM] phase: I switched to Howler.js and it works
+</code></pre>

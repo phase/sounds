@@ -18,11 +18,6 @@ import java.io.File
 val config = readConfig(File("src/main/resources/config.toml"))
 val server = SoundsServer(6666)
 
-fun main(args: Array<String>) {
-    println("S T A R T I N G S E R V E R")
-    server.start()
-}
-
 class SoundsServer(nettyServerPort: Int) {
 
     val songProviders = listOf(
@@ -131,6 +126,14 @@ class SoundsServer(nettyServerPort: Int) {
         if (!database.songExists(song.info.id)) {
             println("Uploading Song: ${song.info.title} by ${song.info.artists.joinToString(", ")} with id ${song.info.id}.")
             database.storeSong(song)
+        }
+    }
+
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            println("S T A R T I N G S E R V E R")
+            server.start()
         }
     }
 
