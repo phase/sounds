@@ -2,10 +2,24 @@ doctype html
 html
     head
         title Sounds
+        link(href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css", rel="stylesheet", integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u", crossorigin="anonymous")
+        link(rel="stylesheet" type="text/css" href="/static/css/base.css")
         block head
-    body
-        h1 Sounds
-        p This is some crazy shit!
-        hr
+    body.container
+        nav.navbar.navbar-default.navbar-fixed-top
+            .container-fluid
+                .navbar-header
+                    a.navbar-brand(href="/")
+                        p.brand Sounds
+                    ul.nav.navbar-nav
+                        li
+                            a(href="/") Home
+                    form.navbar-form.navbar-left(action="/search/")
+                        .form-group
+                            if context["query"] != null
+                                input.form-control(name="q" type='text', placeholder='Thousands of songs...' value="#{context.query}")
+                            else
+                                input.form-control(name="q" type='text', placeholder='Thousands of songs...')
+                        button.btn.btn-default(type='submit') Search
 
         block content

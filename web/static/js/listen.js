@@ -1,4 +1,4 @@
-if (id === undefined) {
+if ("undefined" == typeof id) {
     console.log("A variable with the name 'id' needs to be defined.")
 }
 
@@ -14,14 +14,13 @@ const song = new Howl({
     onplay: function () { hasBeenPlayed = true }
 });
 
-function sliderChange(value) {
+function seek(value) {
     let second = ~~(value / 100 * song.duration())
     song.seek(second)
 }
 
 window.onload = function() {
-    const slider = document.getElementById("slider")
-    slider.value = 0
+    const progressBar = document.getElementById('progressBar')
 
     document.getElementById("play").addEventListener("click", function() {
         if (paused) {
@@ -33,11 +32,18 @@ window.onload = function() {
         }
     }, false)
 
+    progressBar.addEventListener('click', function (e) {
+        const x = e.pageX - this.offsetLeft,
+            y = e.pageY - this.offsetTop,
+            clickedValue = x * this.max / this.offsetWidth;
+            seek(clickedValue)
+    }, false);
+
     setInterval(function() {
         if (hasBeenPlayed) {
             let time = song.seek()
             let percentDone = ~~(time / song.duration() * 100)
-            slider.value = percentDone
+            progressBar.value = percentDone
         }
     }, 500)
 }

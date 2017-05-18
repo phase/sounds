@@ -2,4 +2,8 @@ extends base
 
 block content
     each song in context.get("songs")
-        p!= '<a href="/listen/' + song.id + '">' + song.title + "</a>" + " by " + song.artists
+        p
+            a(href="/listen/#{song.id}") #{song.title + " "}
+            | by
+            each artist in song.artists
+                a(href="/artist/#{artist}") #{" " + artist}

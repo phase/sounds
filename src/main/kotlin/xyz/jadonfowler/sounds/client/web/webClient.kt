@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServer
 import io.vertx.ext.web.Router
+import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.StaticHandler
 import io.vertx.ext.web.templ.JadeTemplateEngine
 import xyz.jadonfowler.sounds.network.*
@@ -69,23 +70,31 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
             }
         }
 
-        router.get("/search/:query").handler { ctx ->
-            val query = ctx.request().getParam("query")
-            val queryPacket = QueryPacket()
-            queryPacket.query = query
-            nettyClient.send(queryPacket) {
-                if (it is SongInfoListPacket) {
-                    ctx.put("songs", it.songs)
-                    engine.render(ctx, "web/search.jade") { res ->
-                        if (res.succeeded()) {
-                            ctx.response().end(res.result())
-                        } else {
-                            ctx.fail(res.cause())
+        val searchHandler = { ctx: RoutingContext ->
+            val query = ctx.request().getParam("q")
+            if (!query.trim().isNullOrEmpty()) {
+                val queryPacket = QueryPacket()
+                queryPacket.query = query
+                nettyClient.send(queryPacket) {
+                    if (it is SongInfoListPacket) {
+                        ctx.put("query", query)
+                        ctx.put("songs", it.songs)
+                        engine.render(ctx, "web/search.jade") { res ->
+                            if (res.succeeded()) {
+                                ctx.response().end(res.result())
+                            } else {
+                                ctx.fail(res.cause())
+                            }
                         }
                     }
                 }
+            } else {
+                ctx.reroute("/")
             }
         }
+
+        router.get("/search/").handler(searchHandler)
+        router.get("/search/:q").handler(searchHandler)
 
         router.get("/static/*").handler(StaticHandler.create("web/static/").setCachingEnabled(false))
 
