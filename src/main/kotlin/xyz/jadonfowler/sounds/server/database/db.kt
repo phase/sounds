@@ -11,6 +11,8 @@ interface SongDatabase {
 
     fun storeSong(song: Song)
 
+    fun storeAlbum(albumTitle: String, songs: List<Song>): Album
+
     fun querySong(query: String): List<SongInfo>
 
     fun queryAlbum(query: String): List<Album>
@@ -27,6 +29,8 @@ interface SongDatabase {
 
     fun retrieveSongInfoById(id: String): SongInfo
 
+    fun retrieveAlbumById(id: String): Album
+
 }
 
 class SQLDatabase(val host: String, val port: Int = 3306, val database: String, val user: String, val password: String) : SongDatabase {
@@ -35,6 +39,12 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
         val id = varchar("id", 32).primaryKey()
         val title = varchar("title", 200)
         val artists = varchar("artists", 200)
+    }
+
+    object Albums : Table() {
+        val id = varchar("id", 32).primaryKey()
+        val title = varchar("title", 200)
+        val songs = varchar("songs", 1024)
     }
 
     fun start() {
@@ -51,6 +61,7 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
         )
         transaction {
             create(Songs)
+            create(Albums)
         }
     }
 
@@ -68,6 +79,13 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
         val title = this[Songs.title]
         val artists = this[Songs.artists]
         return SongInfo(id, title, SongInfo.decompressArtists(artists))
+    }
+
+    fun ResultRow.toAlbum(): Album {
+        val id = this[Albums.id]
+        val title = this[Albums.title]
+        val songs = SongInfo.decompressArtists(this[Albums.songs])
+        return Album(id, title, songs)
     }
 
     override fun storeSong(song: Song) {
@@ -95,6 +113,27 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
         }
     }
 
+    override fun storeAlbum(albumTitle: String, songs: List<Song>): Album {
+        val songIds = songs.map { it.info.id }
+        val songIdsCompressed = "|${songIds.joinToString("|")}|"
+        val albumId = songIdsCompressed.md5Hash()
+        songs.forEach { storeSong(it) }
+        transaction {
+            val sameId = Albums.select { Albums.id eq albumId }
+            if (sameId.empty()) {
+                Albums.insert {
+                    it[id] = albumId
+                    it[title] = albumTitle
+                    it[Albums.songs] = songIdsCompressed
+                }
+            } else {
+                System.err.println("Tried to store $albumTitle in the database, " +
+                        "but there is already a song with the id of $albumId.")
+            }
+        }
+        return Album(albumId, albumTitle, songIds)
+    }
+
     override fun querySong(query: String): List<SongInfo> {
         val songs = mutableListOf<SongInfo>()
         transaction {
@@ -105,7 +144,15 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
         return songs
     }
 
-    override fun queryAlbum(query: String): List<Album> = listOf() // TODO
+    override fun queryAlbum(query: String): List<Album> {
+        val albums = mutableListOf<Album>()
+        transaction {
+            Albums.select { Albums.title like "%$query%" }.forEach {
+                albums.add(it.toAlbum())
+            }
+        }
+        return albums
+    }
 
     override fun updateDetails(id: String, info: SongInfo) {
         transaction {
@@ -148,6 +195,14 @@ class SQLDatabase(val host: String, val port: Int = 3306, val database: String, 
             info = Songs.select { Songs.id eq id }.first().toSongInfo()
         }
         return info!!
+    }
+
+    override fun retrieveAlbumById(id: String): Album {
+        var album: Album? = null
+        transaction {
+            album = Albums.select { Albums.id eq id }.first().toAlbum()
+        }
+        return album!!
     }
 
 }

@@ -32,15 +32,17 @@ fun ByteBuf.readSong(): Song {
 
 fun ByteBuf.writeAlbum(album: Album) {
     writeString(album.id)
+    writeString(album.title)
     writeInt(album.songIds.size)
     album.songIds.forEach { writeString(it) }
 }
 
 fun ByteBuf.readAlbum(): Album {
     val id = readString()
+    val title = readString()
     val length = readInt()
-    val songs = Array(length, { _ -> readString() })
-    return Album(id, songs)
+    val songs = (0..length - 1).map { readString() }
+    return Album(id, title, songs)
 }
 
 val SoundsProtocol = Protocol(mapOf(

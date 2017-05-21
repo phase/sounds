@@ -21,9 +21,9 @@ val server = SoundsServer(6666)
 class SoundsServer(nettyServerPort: Int) {
 
     val songProviders = listOf(
-            SoundCloudProvider(this::uploadSong),
-            LocalFileProvider(this::uploadSong),
-            YouTubeProvider(this::uploadSong)
+            SoundCloudProvider(this),
+            LocalFileProvider(this),
+            YouTubeProvider(this)
     )
 
     val database = SQLDatabase(

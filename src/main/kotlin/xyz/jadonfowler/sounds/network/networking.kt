@@ -79,31 +79,36 @@ class PacketDecoder(val protocol: Protocol) : ReplayingDecoder<Void>() {
 
 class Server(val protocol: Protocol, val port: Int, val handler: ChannelInboundHandlerAdapter) {
 
+    lateinit var thread: Thread
+
     fun start() {
-        val bossGroup = NioEventLoopGroup()
-        val workerGroup = NioEventLoopGroup()
-        try {
-            val b = ServerBootstrap()
-            b.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel::class.java)
-                    .childHandler(object : ChannelInitializer<SocketChannel>() {
-                        public override fun initChannel(ch: SocketChannel) {
-                            ch.pipeline().addLast(PacketEncoder(protocol), PacketDecoder(protocol), handler)
-                        }
-                    })
-                    .option(ChannelOption.SO_BACKLOG, 128)
-                    .option(ChannelOption.AUTO_READ, true)
-                    .childOption(ChannelOption.SO_KEEPALIVE, true)
+        thread = Thread {
+            val bossGroup = NioEventLoopGroup()
+            val workerGroup = NioEventLoopGroup()
+            try {
+                val b = ServerBootstrap()
+                b.group(bossGroup, workerGroup)
+                        .channel(NioServerSocketChannel::class.java)
+                        .childHandler(object : ChannelInitializer<SocketChannel>() {
+                            public override fun initChannel(ch: SocketChannel) {
+                                ch.pipeline().addLast(PacketEncoder(protocol), PacketDecoder(protocol), handler)
+                            }
+                        })
+                        .option(ChannelOption.SO_BACKLOG, 128)
+                        .option(ChannelOption.AUTO_READ, true)
+                        .childOption(ChannelOption.SO_KEEPALIVE, true)
 
-            // Bind and start to accept incoming connections.
-            val f = b.bind(port).sync()
+                // Bind and start to accept incoming connections.
+                val f = b.bind(port).sync()
 
-            // Wait until the server socket is closed.
-            f.channel().closeFuture().sync()
-        } finally {
-            workerGroup.shutdownGracefully()
-            bossGroup.shutdownGracefully()
+                // Wait until the server socket is closed.
+                f.channel().closeFuture().sync()
+            } finally {
+                workerGroup.shutdownGracefully()
+                bossGroup.shutdownGracefully()
+            }
         }
+        thread.start()
     }
 
 }

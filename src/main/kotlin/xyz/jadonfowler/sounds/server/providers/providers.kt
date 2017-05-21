@@ -6,6 +6,7 @@ import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File
 import me.doubledutch.lazyjson.LazyArray
 import me.doubledutch.lazyjson.LazyObject
+import xyz.jadonfowler.sounds.server.SoundsServer
 import xyz.jadonfowler.sounds.server.config
 import xyz.jadonfowler.sounds.server.server
 import xyz.jadonfowler.sounds.structure.Song
@@ -17,7 +18,7 @@ import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.ThreadLocalRandom
 
-abstract class SongProvider(val handler: (Song) -> Unit) {
+abstract class SongProvider {
 
     abstract fun search(query: String)
     abstract fun collect()
@@ -48,7 +49,9 @@ abstract class SongProvider(val handler: (Song) -> Unit) {
 
 }
 
-class LocalFileProvider(handler: (Song) -> Unit) : SongProvider(handler) {
+class LocalFileProvider(server: SoundsServer) : SongProvider() {
+
+    val queue = mutableMapOf<String, MutableList<Song>>()
 
     override fun search(query: String) {
     }
@@ -56,6 +59,15 @@ class LocalFileProvider(handler: (Song) -> Unit) : SongProvider(handler) {
     override fun collect() {
         // TODO: Really search file system
         findFiles(File("src/main/resources/songs/"))
+        queue.forEach { folder, songs ->
+            println("Found album $folder:")
+            println("  ${songs.map { "${it.info.title} by ${it.info.artists.joinToString(", ")}" }.joinToString("\n  ")}")
+            print("Name for album: ")
+            val input = readLine() ?: ""
+            if (input.isNotEmpty()) {
+                server.database.storeAlbum(input, songs)
+            }
+        }
     }
 
     fun findFiles(file: File) {
@@ -63,27 +75,34 @@ class LocalFileProvider(handler: (Song) -> Unit) : SongProvider(handler) {
             if (it.isDirectory)
                 findFiles(it)
             else if (it.extension == "mp3") {
-                val (id, songFile) = store(it.readBytes())
-                if (server.database.songExists(id)) return
-                val bytes = songFile.readBytes()
-                val mp3 = Mp3File(songFile)
-                val song = if (mp3.hasId3v1Tag()) {
-                    val title = mp3.id3v1Tag.title
-                    val artist = mp3.id3v1Tag.artist
-                    Song(bytes, SongInfo(id, title, listOf(artist)))
-                } else if (mp3.hasId3v2Tag()) {
-                    val title = mp3.id3v2Tag.title
-                    val artist = mp3.id3v2Tag.artist
-                    Song(bytes, SongInfo(id, title, listOf(artist)))
-                } else Song(bytes, SongInfo(id, it.name, listOf("Unknown Artist")))
-                handler(song)
+                val folderName = it.parent.split("/").last()
+                if (!queue.contains(folderName)) {
+                    queue.put(folderName, mutableListOf())
+                }
+                queue[folderName]?.add(getSong(it))
             }
         }
     }
 
+    fun getSong(file: File): Song {
+        val (id, songFile) = store(file.readBytes())
+        val bytes = songFile.readBytes()
+        val mp3 = Mp3File(songFile)
+        val song = if (mp3.hasId3v1Tag()) {
+            val title = mp3.id3v1Tag.title
+            val artist = mp3.id3v1Tag.artist
+            Song(bytes, SongInfo(id, title, listOf(artist)))
+        } else if (mp3.hasId3v2Tag()) {
+            val title = mp3.id3v2Tag.title
+            val artist = mp3.id3v2Tag.artist
+            Song(bytes, SongInfo(id, title, listOf(artist)))
+        } else Song(bytes, SongInfo(id, file.name, listOf("Unknown Artist")))
+        return song
+    }
+
 }
 
-class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
+class SoundCloudProvider(server: SoundsServer) : SongProvider() {
 
     val downloadUrl = "http://api.soundcloud.com/tracks/@TRACKID@/stream?client_id=${config.soundcloud.clientId}"
     val resolveUrl = "https://api.soundcloud.com/resolve.json?" +
@@ -159,7 +178,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
         val songTitle = info[0]
         val artists = info[1].split(", ")
 
-        handler(Song(newerBytes, SongInfo(id, songTitle, artists)))
+        server.uploadSong(Song(newerBytes, SongInfo(id, songTitle, artists)))
     }
 
     fun getTrackInfo(user: String, track: String): Triple<String, String, String> {
@@ -206,7 +225,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
             // Upload song
             val (songId, _) = store(bytes)
             val song = Song(bytes, SongInfo(songId, fixedTitle, fixedArtists))
-            handler(song)
+            server.uploadSong(song)
         }
     }
 
@@ -215,7 +234,7 @@ class SoundCloudProvider(handler: (Song) -> Unit) : SongProvider(handler) {
 /**
  * This class uses youtube-dl & ffmpeg
  */
-class YouTubeProvider(handler: (Song) -> Unit) : SongProvider(handler) {
+class YouTubeProvider(server: SoundsServer) : SongProvider() {
 
     val downloadCommand = "youtube-dl -f m4a -o @OUTPUT@ "
     val convertCommand = "ffmpeg -i @INPUT@ -acodec mp3 -ac 2 -ab 192k @OUTPUT@"
@@ -260,7 +279,7 @@ class YouTubeProvider(handler: (Song) -> Unit) : SongProvider(handler) {
         val bytes = File(output).readBytes()
         val (id, _) = store(bytes)
         val song = Song(bytes, SongInfo(id, title, artists.toList()))
-        handler(song)
+        server.uploadSong(song)
     }
 
 }

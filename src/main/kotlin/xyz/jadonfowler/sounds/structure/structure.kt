@@ -26,7 +26,8 @@ class Song(
 
 class Album(
         val id: String,
-        val songIds: Array<String>
+        val title: String,
+        val songIds: List<String>
 )
 
 private val featuredPattern1 = Pattern.compile("""(.*) \(feat\. (.*)\)""")
