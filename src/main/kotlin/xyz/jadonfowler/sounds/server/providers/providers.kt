@@ -58,16 +58,16 @@ class LocalFileProvider(server: SoundsServer) : SongProvider() {
 
     override fun collect() {
         // TODO: Really search file system
-        findFiles(File("src/main/resources/songs/"))
-        queue.forEach { folder, songs ->
-            println("Found album $folder:")
-            println("  ${songs.map { "${it.info.title} by ${it.info.artists.joinToString(", ")}" }.joinToString("\n  ")}")
-            print("Name for album: ")
-            val input = readLine() ?: ""
-            if (input.isNotEmpty()) {
-                server.database.storeAlbum(input, songs)
-            }
-        }
+//        findFiles(File("src/main/resources/songs/"))
+//        queue.forEach { folder, songs ->
+//            println("Found album $folder:")
+//            println("  ${songs.map { "${it.info.title} by ${it.info.artists.joinToString(", ")}" }.joinToString("\n  ")}")
+//            print("Name for album: ")
+//            val input = readLine() ?: ""
+//            if (input.isNotEmpty()) {
+//                server.database.storeAlbum(input, songs)
+//            }
+//        }
     }
 
     fun findFiles(file: File) {

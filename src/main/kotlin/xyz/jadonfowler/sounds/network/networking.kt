@@ -3,7 +3,6 @@ package xyz.jadonfowler.sounds.network
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.ByteBufUtil
 import io.netty.channel.*
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
@@ -27,21 +26,27 @@ open class Packet {
 }
 
 fun ByteBuf.writeString(s: String) {
-    writeInt(s.length)
-    ByteBufUtil.writeUtf8(this, s)
+    val bytes = s.toByteArray(Charset.forName("utf8"))
+    writeInt(bytes.size)
+    writeBytes(bytes)
 }
 
 fun ByteBuf.readString(): String {
     val length = readInt()
     val bytes = ByteArray(length)
     readBytes(bytes)
-    return String(bytes, Charset.forName("UTF-8"))
+    return String(bytes, Charset.forName("utf8"))
 }
 
 data class Protocol(val packets: Map<Int, Class<out Packet>>) : Map<Int, Class<out Packet>> by packets {
 
     override operator fun get(key: Int): Class<out Packet> {
-        return packets[key]!!
+        try {
+            return packets[key]!!
+        } catch(e: Exception) {
+            System.err.println("Error when trying to retrieve the packet $key.")
+            throw e
+        }
     }
 
     operator fun get(packet: Packet?): Int {

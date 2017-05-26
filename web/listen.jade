@@ -12,6 +12,12 @@ block head
     script(src="/static/js/listen.js/")
 
 block content
+    h1
+        a(href="/listen/#{context.id}") #{context.title + " "}
+        small
+            | by
+            each artist in context.artists
+                a(href="/artist/#{artist}") #{" " + artist}
     #controls
         progress#progressBar(value="0" max="100")
         br

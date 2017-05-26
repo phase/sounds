@@ -55,7 +55,8 @@ val SoundsProtocol = Protocol(mapOf(
         7 to QueryPacket::class.java,
         8 to SongInfoListPacket::class.java,
         9 to SongInfoPacket::class.java,
-        10 to RequestSongInfoPacket::class.java
+        10 to RequestSongInfoPacket::class.java,
+        11 to ArtistPacket::class.java
 ))
 
 class CreateUserPacket : Packet() {
@@ -231,6 +232,22 @@ class QueryPacket : Packet() {
     override fun write(buf: ByteBuf) {
         super.write(buf)
         buf.writeString(query)
+    }
+
+}
+
+class ArtistPacket : Packet() {
+
+    lateinit var artist: String
+
+    override fun read(buf: ByteBuf) {
+        super.read(buf)
+        artist = buf.readString()
+    }
+
+    override fun write(buf: ByteBuf) {
+        super.write(buf)
+        buf.writeString(artist)
     }
 
 }

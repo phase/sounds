@@ -44,7 +44,7 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
             nettyClient.send(requestPacket) {
                 if (it is SongInfoPacket) {
                     ctx.put("title", it.info.title)
-                    ctx.put("artists", it.info.artists.joinToString(", "))
+                    ctx.put("artists", it.info.artists)
                     ctx.put("id", it.info.id)
 
                     engine.render(ctx, "web/listen.jade") { res ->
@@ -66,6 +66,25 @@ class WebSoundsClient(soundsServerHost: String, soundsServerPort: Int, val webSe
                 if (it is SongPacket) {
                     val bytes = it.song.bytes
                     ctx.response().end(Buffer.buffer(bytes))
+                }
+            }
+        }
+
+        router.get("/artist/:artist").handler { ctx ->
+            val artist = ctx.request().getParam("artist")
+            val artistPacket = ArtistPacket()
+            artistPacket.artist = artist
+            nettyClient.send(artistPacket) {
+                if (it is SongInfoListPacket) {
+                    ctx.put("artist", artist)
+                    ctx.put("songs", it.songs)
+                    engine.render(ctx, "web/artist.jade") { res ->
+                        if (res.succeeded()) {
+                            ctx.response().end(res.result())
+                        } else {
+                            ctx.fail(res.cause())
+                        }
+                    }
                 }
             }
         }

@@ -69,6 +69,14 @@ class SoundsServer(nettyServerPort: Int) {
                             }
                         }
                     }
+                    is ArtistPacket -> {
+                        ctx?.let {
+                            val responsePacket = SongInfoListPacket()
+                            responsePacket.transactionId = msg.transactionId
+                            responsePacket.songs = database.retrieveSongsByArtist(msg.artist)
+                            ctx.writeAndFlush(responsePacket)
+                        }
+                    }
                 }
             } else println("Got message: $msg")
         }
